@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -204,7 +203,7 @@ class _BookingPageState extends State<BookingPage> {
                                     ?.copyWith(fontSize: 26)),
                             const SizedBox(height: 8),
                             Text(
-                                'Duração: ~${service.duration} • R\$ ${service.price.toStringAsFixed(2).replaceAll('.', ',')}',
+                                'Duração: ~${service.duration} • ${StringUtils.formatCurrency(service.price)}',
                                 style: textTheme.bodyMedium),
                             const SizedBox(height: 40),
                             Column(

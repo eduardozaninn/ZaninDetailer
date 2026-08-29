@@ -15,25 +15,26 @@ class AdminServiceProvider extends ChangeNotifier {
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
 
-  List<AdminServiceModel> _servicos = [];
-  List<AdminServiceModel> get servicos => _servicos;
+  List<AdminServiceModel> _services = [];
+  List<AdminServiceModel> get services => _services;
 
-  Future<void> fetchServicos() async {
+  Future<void> fetchServices() async {
     _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
 
-    final result = await _repository.getServicos();
+    final result = await _repository.getServices();
     result.fold(
       (failure) => _errorMessage = failure.message,
-      (lista) => _servicos = lista,
+      (list) => _services = list,
     );
 
     _isLoading = false;
     notifyListeners();
   }
 
-  Future<bool> deletarServico(int id) async {
-    final result = await _repository.deletarServico(id);
+  Future<bool> deleteService(int id) async {
+    final result = await _repository.deleteService(id);
     return result.fold(
       (failure) {
         _errorMessage = failure.message;
@@ -41,21 +42,21 @@ class AdminServiceProvider extends ChangeNotifier {
         return false;
       },
       (success) {
-        _servicos.removeWhere((s) => s.id == id);
+        _services.removeWhere((s) => s.id == id);
         notifyListeners();
         return true;
       },
     );
   }
 
-  Future<bool> salvarNovoServico({
-    required String nome,
-    required String preco,
-    required String tempoEstimado,
-    String? descricao,
-    XFile? imagem,
+  Future<bool> createService({
+    required String name,
+    required String price,
+    required String durationMinutes,
+    String? description,
+    XFile? image,
   }) async {
-    if (nome.isEmpty || preco.isEmpty || tempoEstimado.isEmpty) {
+    if (name.isEmpty || price.isEmpty || durationMinutes.isEmpty) {
       _errorMessage = 'Preencha todos os campos obrigatórios.';
       return false;
     }
@@ -64,17 +65,17 @@ class AdminServiceProvider extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
-    final double precoConvertido = double.tryParse(preco) ?? 0.0;
-    final int tempoConvertido = int.tryParse(tempoEstimado) ?? 0;
+    final double parsedPrice = double.tryParse(price) ?? 0.0;
+    final int parsedDuration = int.tryParse(durationMinutes) ?? 0;
 
-    final novoServico = AdminServiceModel(
-      name: nome,
-      price: precoConvertido,
-      durationMinutes: tempoConvertido,
-      description: descricao,
+    final newService = AdminServiceModel(
+      name: name,
+      price: parsedPrice,
+      durationMinutes: parsedDuration,
+      description: description,
     );
 
-    final result = await _repository.salvarServico(novoServico, imagem);
+    final result = await _repository.createService(newService, image);
 
     _isLoading = false;
 
@@ -93,15 +94,15 @@ class AdminServiceProvider extends ChangeNotifier {
     );
   }
 
-  Future<bool> atualizarServico({
+  Future<bool> updateService({
     required int id,
-    required String nome,
-    required String preco,
-    required String tempoEstimado,
-    String? descricao,
-    XFile? imagem,
+    required String name,
+    required String price,
+    required String durationMinutes,
+    String? description,
+    XFile? image,
   }) async {
-    if (nome.isEmpty || preco.isEmpty || tempoEstimado.isEmpty) {
+    if (name.isEmpty || price.isEmpty || durationMinutes.isEmpty) {
       _errorMessage = 'Preencha todos os campos obrigatórios.';
       return false;
     }
@@ -110,19 +111,19 @@ class AdminServiceProvider extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
-    final double precoConvertido = double.tryParse(preco) ?? 0.0;
-    final int tempoConvertido = int.tryParse(tempoEstimado) ?? 0;
+    final double parsedPrice = double.tryParse(price) ?? 0.0;
+    final int parsedDuration = int.tryParse(durationMinutes) ?? 0;
 
-    final servicoAtualizado = AdminServiceModel(
+    final updatedService = AdminServiceModel(
       id: id,
-      name: nome,
-      price: precoConvertido,
-      durationMinutes: tempoConvertido,
-      description: descricao,
+      name: name,
+      price: parsedPrice,
+      durationMinutes: parsedDuration,
+      description: description,
     );
 
     final result =
-        await _repository.atualizarServico(id, servicoAtualizado, imagem);
+        await _repository.updateService(id, updatedService, image);
 
     _isLoading = false;
 

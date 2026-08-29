@@ -3,6 +3,7 @@ import 'package:fpdart/fpdart.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/network/failure_mapper.dart';
 import '../../../../core/error/failures.dart';
 import '../../domain/repositories/i_auth_repository.dart';
 import '../models/login_response_model.dart';
@@ -41,6 +42,7 @@ class AuthRepositoryImpl implements IAuthRepository {
 
       return Right(LoginResponseModel.fromJson(response.data));
     } on DioException catch (e) {
+      if (FailureMapper.isNetworkError(e)) return Left(NetworkFailure());
       if (e.response?.statusCode == 401 || e.response?.statusCode == 404) {
         return Left(ServerFailure('E-mail ou senha incorretos.'));
       }
@@ -59,6 +61,7 @@ class AuthRepositoryImpl implements IAuthRepository {
       );
       return const Right(true);
     } on DioException catch (e) {
+      if (FailureMapper.isNetworkError(e)) return Left(NetworkFailure());
       if (e.response?.statusCode == 404 || e.response?.statusCode == 422) {
         return Left(ServerFailure('E-mail não encontrado ou inválido.'));
       }
@@ -77,7 +80,8 @@ class AuthRepositoryImpl implements IAuthRepository {
         data: {"access_token": token, "new_password": newPassword},
       );
       return const Right(true);
-    } on DioException catch (_) {
+    } on DioException catch (e) {
+      if (FailureMapper.isNetworkError(e)) return Left(NetworkFailure());
       return Left(ServerFailure('Link expirado ou inválido. Tente novamente.'));
     } catch (e) {
       return Left(ServerFailure('Ocorreu um erro inesperado.'));

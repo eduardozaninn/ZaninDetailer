@@ -4,7 +4,7 @@ class AppointmentModel {
   final String scheduledStart;
   final String scheduledEnd;
   final String status;
-  final String totalPrice;
+  final double totalPrice;
   final String? cancellationToken;
 
   AppointmentModel({
@@ -24,7 +24,7 @@ class AppointmentModel {
       scheduledStart: json['scheduled_start'] ?? '',
       scheduledEnd: json['scheduled_end'] ?? '',
       status: json['status'] ?? 'pendente',
-      totalPrice: json['total_price']?.toString() ?? '0.00',
+      totalPrice: double.tryParse(json['total_price']?.toString() ?? '') ?? 0.0,
       cancellationToken: json['cancellation_token'],
     );
   }

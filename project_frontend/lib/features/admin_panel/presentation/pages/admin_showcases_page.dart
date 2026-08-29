@@ -11,7 +11,7 @@ class AdminShowcasesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => di.sl<AdminShowcaseProvider>()..fetchVitrines(),
+      create: (_) => di.sl<AdminShowcaseProvider>()..fetchShowcases(),
       child: const _AdminShowcasesView(),
     );
   }
@@ -47,23 +47,23 @@ class _AdminShowcasesView extends StatelessWidget {
                   'Fotos exibidas na seção "Últimos Trabalhos"',
                   style: TextStyle(color: Colors.grey[500], fontSize: 12),
                 ),
-                _SlotBadge(count: provider.vitrines.length),
+                _SlotBadge(count: provider.showcases.length),
               ],
             ),
           ),
-          if (provider.isLoading && provider.vitrines.isEmpty)
+          if (provider.isLoading && provider.showcases.isEmpty)
             const Expanded(
               child: Center(
                 child: CircularProgressIndicator(color: AppTheme.primaryRed),
               ),
             )
-          else if (provider.vitrines.isEmpty)
-            Expanded(child: _EmptyState(onAdd: () => _adicionar(context, provider)))
+          else if (provider.showcases.isEmpty)
+            Expanded(child: _EmptyState(onAdd: () => _addPhoto(context, provider)))
           else
             Expanded(
               child: RefreshIndicator(
                 color: AppTheme.primaryRed,
-                onRefresh: provider.fetchVitrines,
+                onRefresh: provider.fetchShowcases,
                 child: GridView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -72,14 +72,14 @@ class _AdminShowcasesView extends StatelessWidget {
                     mainAxisSpacing: 12,
                     childAspectRatio: 0.75,
                   ),
-                  itemCount: provider.vitrines.length,
+                  itemCount: provider.showcases.length,
                   itemBuilder: (context, index) {
                     return _ShowcaseCard(
-                      vitrine: provider.vitrines[index],
+                      showcase: provider.showcases[index],
                       onReplace: () =>
-                          _substituir(context, provider.vitrines[index], provider),
+                          _replacePhoto(context, provider.showcases[index], provider),
                       onDelete: () =>
-                          _confirmarExclusao(context, provider.vitrines[index], provider),
+                          _confirmDelete(context, provider.showcases[index], provider),
                     );
                   },
                 ),
@@ -87,7 +87,7 @@ class _AdminShowcasesView extends StatelessWidget {
             ),
         ],
       ),
-      floatingActionButton: provider.podeAdicionar
+      floatingActionButton: provider.canAddMore
           ? FloatingActionButton.extended(
               backgroundColor: AppTheme.primaryRed,
               icon: const Icon(Icons.add_photo_alternate_outlined,
@@ -95,29 +95,29 @@ class _AdminShowcasesView extends StatelessWidget {
               label: const Text('Adicionar foto',
                   style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               onPressed:
-                  provider.isLoading ? null : () => _adicionar(context, provider),
+                  provider.isLoading ? null : () => _addPhoto(context, provider),
             )
           : null,
     );
   }
 
-  Future<void> _adicionar(
+  Future<void> _addPhoto(
       BuildContext context, AdminShowcaseProvider provider) async {
-    final sucesso = await provider.adicionarVitrine();
+    final success = await provider.addShowcase();
     if (!context.mounted) return;
-    _resultado(context, provider, sucesso, 'Foto adicionada com sucesso!');
+    _showResult(context, provider, success, 'Foto adicionada com sucesso!');
   }
 
-  Future<void> _substituir(BuildContext context, ShowcaseModel vitrine,
+  Future<void> _replacePhoto(BuildContext context, ShowcaseModel showcase,
       AdminShowcaseProvider provider) async {
-    final sucesso = await provider.substituirVitrine(vitrine.id);
+    final success = await provider.replaceShowcase(showcase.id);
     if (!context.mounted) return;
-    _resultado(context, provider, sucesso, 'Foto substituída com sucesso!');
+    _showResult(context, provider, success, 'Foto substituída com sucesso!');
   }
 
-  Future<void> _confirmarExclusao(BuildContext context, ShowcaseModel vitrine,
+  Future<void> _confirmDelete(BuildContext context, ShowcaseModel showcase,
       AdminShowcaseProvider provider) async {
-    final confirmar = await showDialog<bool>(
+    final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E1E),
@@ -149,20 +149,20 @@ class _AdminShowcasesView extends StatelessWidget {
         ],
       ),
     );
-    if (confirmar != true || !context.mounted) return;
+    if (confirm != true || !context.mounted) return;
 
-    final sucesso = await provider.deletarVitrine(vitrine.id);
+    final success = await provider.deleteShowcase(showcase.id);
     if (!context.mounted) return;
-    _resultado(context, provider, sucesso, 'Foto removida com sucesso.');
+    _showResult(context, provider, success, 'Foto removida com sucesso.');
   }
 
-  void _resultado(BuildContext context, AdminShowcaseProvider provider,
-      bool sucesso, String mensagemSucesso) {
+  void _showResult(BuildContext context, AdminShowcaseProvider provider,
+      bool success, String successMessage) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(sucesso
-          ? mensagemSucesso
+      content: Text(success
+          ? successMessage
           : (provider.errorMessage ?? 'Não foi possível concluir.')),
-      backgroundColor: sucesso ? AppTheme.successGreen : AppTheme.primaryRed,
+      backgroundColor: success ? AppTheme.successGreen : AppTheme.primaryRed,
     ));
   }
 }
@@ -173,16 +173,16 @@ class _SlotBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cheio = count >= 5;
+    final isFull = count >= 5;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
       decoration: BoxDecoration(
-        color: cheio
+        color: isFull
             ? Colors.white.withValues(alpha: 0.05)
             : AppTheme.primaryRed.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: cheio
+          color: isFull
               ? Colors.white.withValues(alpha: 0.1)
               : AppTheme.primaryRed.withValues(alpha: 0.4),
         ),
@@ -190,7 +190,7 @@ class _SlotBadge extends StatelessWidget {
       child: Text(
         '$count / 5 fotos',
         style: TextStyle(
-          color: cheio ? Colors.grey[500] : AppTheme.primaryRed,
+          color: isFull ? Colors.grey[500] : AppTheme.primaryRed,
           fontWeight: FontWeight.bold,
           fontSize: 12,
         ),
@@ -241,12 +241,12 @@ class _EmptyState extends StatelessWidget {
 
 class _ShowcaseCard extends StatelessWidget {
   const _ShowcaseCard({
-    required this.vitrine,
+    required this.showcase,
     required this.onReplace,
     required this.onDelete,
   });
 
-  final ShowcaseModel vitrine;
+  final ShowcaseModel showcase;
   final VoidCallback onReplace;
   final VoidCallback onDelete;
 
@@ -258,7 +258,7 @@ class _ShowcaseCard extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           Image.network(
-            vitrine.imageUrl,
+            showcase.imageUrl,
             fit: BoxFit.cover,
             loadingBuilder: (_, child, progress) => progress == null
                 ? child

@@ -1,10 +1,16 @@
+import 'dart:async';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../constants/app_constants.dart';
 
 class ApiClient {
   late final Dio dio;
   final FlutterSecureStorage _storage;
+
+  // Garante que, se várias requisições levarem 401 ao mesmo tempo, só uma
+  // dispara o refresh de verdade — as demais esperam o mesmo resultado.
+  Completer<bool>? _refreshCompleter;
 
   static const String baseUrl =
       'https://lashaun-unbumped-squarely.ngrok-free.dev/api/v1/';
@@ -20,12 +26,14 @@ class ApiClient {
       },
     ));
 
-    dio.interceptors.add(LogInterceptor(
-      request: true,
-      requestBody: true,
-      responseBody: true,
-      error: true,
-    ));
+    if (kDebugMode) {
+      dio.interceptors.add(LogInterceptor(
+        request: true,
+        requestBody: true,
+        responseBody: true,
+        error: true,
+      ));
+    }
 
     dio.interceptors.add(
       InterceptorsWrapper(
@@ -37,34 +45,21 @@ class ApiClient {
           return handler.next(options);
         },
         onError: (DioException e, handler) async {
-          if (e.response?.statusCode == 401) {
-            if (e.requestOptions.path.contains('/auth/login')) {
-              return handler.next(e);
-            }
+          final isUnauthorized = e.response?.statusCode == 401;
+          final isLoginRequest = e.requestOptions.path.contains('/auth/login');
 
-            final refreshToken =
-                await _storage.read(key: StoreKeys.refreshToken);
-            if (refreshToken != null) {
+          if (isUnauthorized && !isLoginRequest) {
+            final refreshed = await _refreshToken();
+            if (refreshed) {
+              final newAccessToken =
+                  await _storage.read(key: StoreKeys.accessToken);
+              e.requestOptions.headers['Authorization'] =
+                  'Bearer $newAccessToken';
               try {
-                final refreshResponse = await dio.post(
-                  '/auth/refresh',
-                  data: {'refresh_token': refreshToken},
-                );
-
-                final newAccessToken = refreshResponse.data['access_token'];
-                final newRefreshToken = refreshResponse.data['refresh_token'];
-
-                await _storage.write(
-                    key: StoreKeys.accessToken, value: newAccessToken);
-                await _storage.write(
-                    key: StoreKeys.refreshToken, value: newRefreshToken);
-
-                e.requestOptions.headers['Authorization'] =
-                    'Bearer $newAccessToken';
                 final retryResponse = await dio.fetch(e.requestOptions);
                 return handler.resolve(retryResponse);
-              } catch (refreshError) {
-                await _storage.deleteAll();
+              } catch (_) {
+                return handler.next(e);
               }
             }
           }
@@ -72,5 +67,44 @@ class ApiClient {
         },
       ),
     );
+  }
+
+  Future<bool> _refreshToken() async {
+    if (_refreshCompleter != null) {
+      return _refreshCompleter!.future;
+    }
+
+    final completer = Completer<bool>();
+    _refreshCompleter = completer;
+
+    try {
+      final refreshToken = await _storage.read(key: StoreKeys.refreshToken);
+      if (refreshToken == null) {
+        completer.complete(false);
+        return false;
+      }
+
+      final refreshResponse = await dio.post(
+        '/auth/refresh',
+        data: {'refresh_token': refreshToken},
+      );
+
+      final newAccessToken = refreshResponse.data['access_token'];
+      final newRefreshToken = refreshResponse.data['refresh_token'];
+
+      await _storage.write(key: StoreKeys.accessToken, value: newAccessToken);
+      await _storage.write(
+          key: StoreKeys.refreshToken, value: newRefreshToken);
+
+      completer.complete(true);
+      return true;
+    } catch (_) {
+      await _storage.delete(key: StoreKeys.accessToken);
+      await _storage.delete(key: StoreKeys.refreshToken);
+      completer.complete(false);
+      return false;
+    } finally {
+      _refreshCompleter = null;
+    }
   }
 }

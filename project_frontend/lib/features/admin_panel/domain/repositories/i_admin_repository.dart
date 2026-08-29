@@ -2,36 +2,36 @@ import 'package:fpdart/fpdart.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/error/failures.dart';
 import '../../data/models/admin_service_model.dart';
-import '../../data/models/admin_agenda_model.dart';
+import '../../data/models/admin_appointment_model.dart';
 import '../../data/models/admin_brand_model.dart';
 import '../../data/models/user_model.dart';
 import '../../data/models/showcase_model.dart';
 
 abstract class IAdminRepository {
-  Future<Either<Failure, UserModel>> getMeuPerfil();
-  Future<Either<Failure, List<AdminAgendaModel>>> getAgendamentosHoje(
-      DateTime data);
+  Future<Either<Failure, UserModel>> getMyProfile();
+  Future<Either<Failure, List<AdminAppointmentModel>>> getTodayAppointments(
+      DateTime date);
 
-  Future<Either<Failure, List<AdminServiceModel>>> getServicos();
-  Future<Either<Failure, bool>> salvarServico(
-      AdminServiceModel servico, XFile? imagem);
-  Future<Either<Failure, bool>> deletarServico(int id);
-  Future<Either<Failure, bool>> atualizarServico(
-      int id, AdminServiceModel servico, XFile? imagem);
+  Future<Either<Failure, List<AdminServiceModel>>> getServices();
+  Future<Either<Failure, bool>> createService(
+      AdminServiceModel service, XFile? image);
+  Future<Either<Failure, bool>> deleteService(int id);
+  Future<Either<Failure, bool>> updateService(
+      int id, AdminServiceModel service, XFile? image);
 
-  Future<Either<Failure, List<AdminBrandModel>>> getMarcas();
-  Future<Either<Failure, bool>> salvarMarca(
-      AdminBrandModel marca, XFile? imagem);
-  Future<Either<Failure, bool>> atualizarMarca(
-      int id, AdminBrandModel marca, XFile? imagem);
-  Future<Either<Failure, bool>> deletarMarca(int id);
+  Future<Either<Failure, List<AdminBrandModel>>> getBrands();
+  Future<Either<Failure, bool>> createBrand(
+      AdminBrandModel brand, XFile? image);
+  Future<Either<Failure, bool>> updateBrand(
+      int id, AdminBrandModel brand, XFile? image);
+  Future<Either<Failure, bool>> deleteBrand(int id);
 
-  Future<Either<Failure, bool>> reagendarAgendamento(
-      int appointmentId, String novoHorarioIso);
-  Future<Either<Failure, bool>> cancelarAgendamento(
-      int appointmentId, String motivo);
-  Future<Either<Failure, bool>> concluirAgendamento(int appointmentId);
-  Future<Either<Failure, bool>> atualizarDadosCliente({
+  Future<Either<Failure, bool>> rescheduleAppointment(
+      int appointmentId, String newScheduledStartIso);
+  Future<Either<Failure, bool>> cancelAppointment(
+      int appointmentId, String reason);
+  Future<Either<Failure, bool>> completeAppointment(int appointmentId);
+  Future<Either<Failure, bool>> updateClientData({
     required int appointmentId,
     required String fullName,
     required String phone,
@@ -39,8 +39,8 @@ abstract class IAdminRepository {
     required String vehicleBrandModel,
   });
 
-  Future<Either<Failure, List<ShowcaseModel>>> getVitrines();
-  Future<Either<Failure, bool>> criarVitrine(XFile imagem);
-  Future<Either<Failure, bool>> atualizarVitrine(int id, XFile imagem);
-  Future<Either<Failure, bool>> deletarVitrine(int id);
+  Future<Either<Failure, List<ShowcaseModel>>> getShowcases();
+  Future<Either<Failure, bool>> createShowcase(XFile image);
+  Future<Either<Failure, bool>> updateShowcase(int id, XFile image);
+  Future<Either<Failure, bool>> deleteShowcase(int id);
 }

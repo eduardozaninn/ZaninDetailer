@@ -11,10 +11,7 @@ abstract class IBookingRepository {
   Future<Either<Failure, List<String>>> getAvailableSlots(
       int serviceId, String date);
 
-  Future<Either<Failure, AppointmentModel>> getAppointmentDetails(int appointmentId);
-
-  
-Future<Either<Failure, AppointmentModel>> submitBooking({
+  Future<Either<Failure, AppointmentModel>> submitBooking({
     required int serviceId,
     required String scheduledStartIso,
     required String clientName,
@@ -23,10 +20,4 @@ Future<Either<Failure, AppointmentModel>> submitBooking({
     required String vehicleModel,
   });
   Future<Either<Failure, List<String>>> getBrands();
-
-  Future<Either<Failure, Unit>> cancelBooking({
-    required int appointmentId,
-    required String cancellationToken,
-    required String reason,
-  });
 }

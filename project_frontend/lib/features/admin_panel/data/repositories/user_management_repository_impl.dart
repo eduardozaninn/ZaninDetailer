@@ -1,31 +1,18 @@
-import 'package:dartz/dartz.dart';
-import 'package:dio/dio.dart';
+import 'package:fpdart/fpdart.dart';
 
 import '../../../../core/error/failures.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/network/failure_mapper.dart';
 import '../../../../features/admin_panel/data/models/user_model.dart';
+import '../../domain/repositories/i_user_management_repository.dart';
 
-class UserManagementRepository {
+class UserManagementRepository implements IUserManagementRepository {
   final ApiClient _apiClient;
 
   UserManagementRepository({required ApiClient apiClient})
       : _apiClient = apiClient;
 
-  String _extractErrorMessage(dynamic error) {
-    if (error is DioException && error.response != null) {
-      final data = error.response!.data;
-      if (data is Map && data.containsKey('detail')) {
-        final detail = data['detail'];
-        if (detail is String) return detail;
-
-        if (detail is List && detail.isNotEmpty) {
-          return detail[0]['msg'] ?? 'Erro de validação nos dados.';
-        }
-      }
-    }
-    return 'Erro inesperado ao conectar com o servidor.';
-  }
-
+  @override
   Future<Either<Failure, List<UserModel>>> getUsers() async {
     try {
       final response = await _apiClient.dio.get('/admin/users');
@@ -33,10 +20,11 @@ class UserManagementRepository {
       final users = usersJson.map((json) => UserModel.fromJson(json)).toList();
       return Right(users);
     } catch (e) {
-      return Left(ServerFailure(_extractErrorMessage(e)));
+      return Left(FailureMapper.map(e));
     }
   }
 
+  @override
   Future<Either<Failure, UserModel>> createUser(
       String email, String password, String fullName) async {
     try {
@@ -46,19 +34,21 @@ class UserManagementRepository {
       );
       return Right(UserModel.fromJson(response.data));
     } catch (e) {
-      return Left(ServerFailure(_extractErrorMessage(e)));
+      return Left(FailureMapper.map(e));
     }
   }
 
+  @override
   Future<Either<Failure, bool>> deleteUser(String userId) async {
     try {
       await _apiClient.dio.delete('/admin/users/$userId');
       return const Right(true);
     } catch (e) {
-      return Left(ServerFailure(_extractErrorMessage(e)));
+      return Left(FailureMapper.map(e));
     }
   }
 
+  @override
   Future<Either<Failure, UserModel>> updateUser(String userId,
       {String? fullName, String? password}) async {
     try {
@@ -72,7 +62,7 @@ class UserManagementRepository {
       );
       return Right(UserModel.fromJson(response.data));
     } catch (e) {
-      return Left(ServerFailure(_extractErrorMessage(e)));
+      return Left(FailureMapper.map(e));
     }
   }
 }

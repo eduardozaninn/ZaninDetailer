@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../core/utils/string_utils.dart';
 import '../../data/models/service_model.dart';
 import '../providers/booking_provider.dart';
 
@@ -24,18 +25,13 @@ class BookingConfirmationStep extends StatelessWidget {
     required this.onBack,
   });
 
-  String _capitalize(String text) {
-    if (text.isEmpty) return text;
-    return text[0].toUpperCase() + text.substring(1).toLowerCase();
-  }
-
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<BookingProvider>();
     final textTheme = Theme.of(context).textTheme;
 
     final day = DateFormat('d').format(selectedDate);
-    final weekday = _capitalize(
+    final weekday = StringUtils.capitalize(
         DateFormat('E', 'pt_BR').format(selectedDate).replaceAll('.', ''));
 
     return Stack(
@@ -117,7 +113,7 @@ class BookingConfirmationStep extends StatelessWidget {
                         const Text("💵", style: TextStyle(fontSize: 16)),
                         const SizedBox(width: 12),
                         Text(
-                          "R\$ ${service.price.toStringAsFixed(2).replaceAll('.', ',')}  •  Duração: ~${service.duration}",
+                          "${StringUtils.formatCurrency(service.price)}  •  Duração: ~${service.duration}",
                           style: textTheme.titleMedium
                               ?.copyWith(color: Colors.grey[300]),
                         ),
@@ -251,12 +247,12 @@ class BookingConfirmationStep extends StatelessWidget {
     );
   }
 
-  Future<void> _abrirWhatsApp(BuildContext context, String mensagem) async {
+  Future<void> _openWhatsApp(BuildContext context, String message) async {
     final uri = Uri.parse(
-      'https://wa.me/${AppConstants.whatsappNumber}?text=${Uri.encodeComponent(mensagem)}',
+      'https://wa.me/${AppConstants.whatsappNumber}?text=${Uri.encodeComponent(message)}',
     );
-    final abriu = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!abriu && context.mounted) {
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Não foi possível abrir o WhatsApp.')),
       );
@@ -264,17 +260,17 @@ class BookingConfirmationStep extends StatelessWidget {
   }
 
   void _showSuccessModal(BuildContext context, DateTime date, String time) {
-    final dataFormatada = DateFormat('dd/MM/yyyy').format(date);
-    final mensagemContato =
+    final formattedDate = DateFormat('dd/MM/yyyy').format(date);
+    final contactMessage =
         'Olá! Acabei de agendar o serviço *${service.title}* para o dia '
-        '$dataFormatada às $time. Qualquer dúvida, estou à disposição!';
-    final mensagemReagendar =
+        '$formattedDate às $time. Qualquer dúvida, estou à disposição!';
+    final rescheduleMessage =
         'Olá! Gostaria de reagendar meu agendamento do serviço '
-        '*${service.title}*, marcado para o dia $dataFormatada às $time. '
+        '*${service.title}*, marcado para o dia $formattedDate às $time. '
         'Poderia me ajudar com isso?';
-    final mensagemCancelar =
+    final cancelMessage =
         'Olá! Gostaria de cancelar meu agendamento do serviço '
-        '*${service.title}*, marcado para o dia $dataFormatada às $time.';
+        '*${service.title}*, marcado para o dia $formattedDate às $time.';
 
     showDialog(
       context: context,
@@ -316,7 +312,7 @@ class BookingConfirmationStep extends StatelessWidget {
                         backgroundColor: const Color(0xFF25D366),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12))),
-                    onPressed: () => _abrirWhatsApp(context, mensagemContato),
+                    onPressed: () => _openWhatsApp(context, contactMessage),
                     icon: const Icon(Icons.chat_bubble_rounded,
                         color: Colors.white, size: 20),
                     label: const Text("Falar no WhatsApp",
@@ -337,7 +333,7 @@ class BookingConfirmationStep extends StatelessWidget {
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12))),
                           onPressed: () =>
-                              _abrirWhatsApp(context, mensagemReagendar),
+                              _openWhatsApp(context, rescheduleMessage),
                           child: const Text("Reagendar",
                               style: TextStyle(
                                   color: Colors.white,
@@ -357,7 +353,7 @@ class BookingConfirmationStep extends StatelessWidget {
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12))),
                           onPressed: () =>
-                              _abrirWhatsApp(context, mensagemCancelar),
+                              _openWhatsApp(context, cancelMessage),
                           child: Text("Cancelar",
                               style: TextStyle(
                                   color: AppTheme.primaryRed.withValues(alpha: 0.9),

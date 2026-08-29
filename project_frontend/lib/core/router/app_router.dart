@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:provider/provider.dart';
 import '../constants/app_constants.dart';
+import '../utils/jwt_utils.dart';
 import '../../di/injection_container.dart' as di;
 import '../../features/client_booking/data/models/service_model.dart';
 import '../../features/admin_panel/data/models/admin_service_model.dart';
@@ -30,21 +31,20 @@ class AppRouter {
   static const String home = '/';
   static const String services = '/services';
   static const String booking = '/booking';
-  static const String myAppointments = '/my-appointments';
   static const String passwordUpdate = '/password-update';
 
   static const String admin = '/admin';
   static const String adminUsers = '/admin/users';
 
-  static const String adminServicosList = '/admin/services';
-  static const String adminNovoServico = '/admin/new-service';
-  static const String adminEditarServico = '/admin/edit-service';
+  static const String adminServicesList = '/admin/services';
+  static const String adminNewService = '/admin/new-service';
+  static const String adminEditService = '/admin/edit-service';
 
-  static const String adminMarcasList = '/admin/brands';
-  static const String adminNovaMarca = '/admin/new-brand';
-  static const String adminEditarMarca = '/admin/edit-brands';
+  static const String adminBrandsList = '/admin/brands';
+  static const String adminNewBrand = '/admin/new-brand';
+  static const String adminEditBrand = '/admin/edit-brands';
 
-  static const String adminVitrines = '/admin/showcases';
+  static const String adminShowcases = '/admin/showcases';
 
   static final router = GoRouter(
     initialLocation: home,
@@ -84,7 +84,7 @@ class AppRouter {
           final storage = di.sl<FlutterSecureStorage>();
           final token = await storage.read(key: StoreKeys.accessToken);
 
-          if (token == null || token.isEmpty) {
+          if (token == null || token.isEmpty || JwtUtils.isExpired(token)) {
             return services;
           }
           return null;
@@ -112,29 +112,21 @@ class AppRouter {
           ),
           GoRoute(
             path: 'edit-service',
+            redirect: (context, state) {
+              if (state.extra == null) return adminServicesList;
+              return null;
+            },
             builder: (context, state) {
-              final services = state.extra as AdminServiceModel;
-              return AdminEditServicePage(servico: services);
+              final service = state.extra as AdminServiceModel;
+              return AdminEditServicePage(service: service);
             },
           ),
           GoRoute(
             path: 'new-service',
-            pageBuilder: (context, state) {
-              return CustomTransitionPage(
-                key: state.pageKey,
-                child: const AdminNewServicePage(),
-                transitionsBuilder:
-                    (context, animation, secondaryAnimation, child) {
-                  const begin = Offset(0.0, 1.0);
-                  const end = Offset.zero;
-                  const curve = Curves.easeOutQuart;
-                  var tween = Tween(begin: begin, end: end)
-                      .chain(CurveTween(curve: curve));
-                  return SlideTransition(
-                      position: animation.drive(tween), child: child);
-                },
-              );
-            },
+            pageBuilder: (context, state) => _slideUpTransitionPage(
+              key: state.pageKey,
+              child: const AdminNewServicePage(),
+            ),
           ),
           GoRoute(
             path: 'brands',
@@ -142,29 +134,21 @@ class AppRouter {
           ),
           GoRoute(
             path: 'edit-brands',
+            redirect: (context, state) {
+              if (state.extra == null) return adminBrandsList;
+              return null;
+            },
             builder: (context, state) {
-              final marca = state.extra as AdminBrandModel;
-              return AdminEditBrandPage(marca: marca);
+              final brand = state.extra as AdminBrandModel;
+              return AdminEditBrandPage(brand: brand);
             },
           ),
           GoRoute(
             path: 'new-brand',
-            pageBuilder: (context, state) {
-              return CustomTransitionPage(
-                key: state.pageKey,
-                child: const AdminNewBrandPage(),
-                transitionsBuilder:
-                    (context, animation, secondaryAnimation, child) {
-                  const begin = Offset(0.0, 1.0);
-                  const end = Offset.zero;
-                  const curve = Curves.easeOutQuart;
-                  var tween = Tween(begin: begin, end: end)
-                      .chain(CurveTween(curve: curve));
-                  return SlideTransition(
-                      position: animation.drive(tween), child: child);
-                },
-              );
-            },
+            pageBuilder: (context, state) => _slideUpTransitionPage(
+              key: state.pageKey,
+              child: const AdminNewBrandPage(),
+            ),
           ),
           GoRoute(
             path: 'showcases',
@@ -173,5 +157,22 @@ class AppRouter {
         ],
       ),
     ],
+  );
+}
+
+CustomTransitionPage<void> _slideUpTransitionPage({
+  required LocalKey key,
+  required Widget child,
+}) {
+  return CustomTransitionPage(
+    key: key,
+    child: child,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      const begin = Offset(0.0, 1.0);
+      const end = Offset.zero;
+      const curve = Curves.easeOutQuart;
+      var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+      return SlideTransition(position: animation.drive(tween), child: child);
+    },
   );
 }

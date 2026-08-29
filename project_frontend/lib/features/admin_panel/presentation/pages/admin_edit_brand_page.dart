@@ -1,33 +1,30 @@
-import 'dart:io';
-import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-import '../../../../core/theme/app_theme.dart';
 import '../../../../di/injection_container.dart' as di;
 import '../../data/models/admin_brand_model.dart';
 import '../providers/admin_brand_provider.dart';
 import '../widgets/admin_custom_input.dart';
-import '../widgets/dashed_rect_painter.dart';
+import '../widgets/admin_form_scaffold.dart';
+import '../widgets/image_upload_field.dart';
 
 class AdminEditBrandPage extends StatelessWidget {
-  final AdminBrandModel marca;
-  const AdminEditBrandPage({super.key, required this.marca});
+  final AdminBrandModel brand;
+  const AdminEditBrandPage({super.key, required this.brand});
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => di.sl<AdminBrandProvider>(),
-      child: _AdminEditBrandView(marca: marca),
+      child: _AdminEditBrandView(brand: brand),
     );
   }
 }
 
 class _AdminEditBrandView extends StatefulWidget {
-  final AdminBrandModel marca;
-  const _AdminEditBrandView({required this.marca});
+  final AdminBrandModel brand;
+  const _AdminEditBrandView({required this.brand});
 
   @override
   State<_AdminEditBrandView> createState() => _AdminEditBrandViewState();
@@ -41,7 +38,7 @@ class _AdminEditBrandViewState extends State<_AdminEditBrandView> {
   @override
   void initState() {
     super.initState();
-    _nomeController = TextEditingController(text: widget.marca.name);
+    _nomeController = TextEditingController(text: widget.brand.name);
   }
 
   @override
@@ -71,10 +68,10 @@ class _AdminEditBrandViewState extends State<_AdminEditBrandView> {
     }
 
     final provider = context.read<AdminBrandProvider>();
-    final sucesso = await provider.atualizarMarca(
-      id: widget.marca.id,
-      nome: _nomeController.text.trim(),
-      imagem: _image,
+    final sucesso = await provider.updateBrand(
+      id: widget.brand.id,
+      name: _nomeController.text.trim(),
+      image: _image,
     );
 
     if (mounted) {
@@ -93,150 +90,22 @@ class _AdminEditBrandViewState extends State<_AdminEditBrandView> {
   @override
   Widget build(BuildContext context) {
     final isLoading = context.watch<AdminBrandProvider>().isLoading;
-    final textTheme = Theme.of(context).textTheme;
 
-    return Scaffold(
-      backgroundColor: AppTheme.background,
-      body: Stack(
-        children: [
-          Positioned(
-              top: -100,
-              right: -80,
-              child: Container(
-                  width: 350,
-                  height: 350,
-                  decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppTheme.primaryRed.withValues(alpha: 0.15)),
-                  child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 100, sigmaY: 100),
-                      child: Container(color: Colors.transparent)))),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 20),
-                  GestureDetector(
-                      onTap: () => context.pop(),
-                      child: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                              color: AppTheme.primaryRed.withValues(alpha: 0.3),
-                              shape: BoxShape.circle),
-                          child: const Icon(Icons.arrow_back_ios_new,
-                              color: AppTheme.primaryRed, size: 18))),
-                  const SizedBox(height: 32),
-                  Text('Editar Marca', style: textTheme.headlineLarge),
-                  const SizedBox(height: 32),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          AdminCustomInput(
-                              hint: 'Nome da Marca',
-                              controller: _nomeController),
-                          const SizedBox(height: 32),
-                          _image == null && widget.marca.imageUrl == null
-                              ? _buildDashedUploadArea(textTheme)
-                              : _buildImagePreview(),
-                          const SizedBox(height: 40),
-                        ],
-                      ),
-                    ),
-                  ),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed: isLoading ? null : _handleSave,
-                      style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primaryRed,
-                          disabledBackgroundColor:
-                              AppTheme.primaryRed.withValues(alpha: 0.5),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12))),
-                      child: isLoading
-                          ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
-                                  color: Colors.white, strokeWidth: 3))
-                          : Text('Salvar Alterações',
-                              style: textTheme.labelLarge),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDashedUploadArea(TextTheme textTheme) {
-    return GestureDetector(
-      onTap: _pickImage,
-      child: CustomPaint(
-          painter: DashedRectPainter(
-              color: Colors.white.withValues(alpha: 0.2),
-              strokeWidth: 2,
-              gap: 6),
-          child: Container(
-              width: double.infinity,
-              height: 200,
-              padding: const EdgeInsets.all(24),
-              color: Colors.transparent,
-              child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.camera_alt_outlined,
-                        color: Colors.white.withValues(alpha: 0.4), size: 60),
-                    const SizedBox(height: 16),
-                    Text('Atualizar logo da marca',
-                        textAlign: TextAlign.center,
-                        style: textTheme.bodyMedium)
-                  ]))),
-    );
-  }
-
-  Widget _buildImagePreview() {
-    return Stack(
+    return AdminFormScaffold(
+      title: 'Editar Marca',
+      isLoading: isLoading,
+      saveLabel: 'Salvar Alterações',
+      onSave: _handleSave,
       children: [
-        Container(
-          width: double.infinity,
-          height: 200,
-          decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                  color: AppTheme.primaryRed.withValues(alpha: 0.5), width: 2)),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: _image == null
-                ? Image.network(widget.marca.imageUrl!, fit: BoxFit.cover)
-                : (kIsWeb
-                    ? Image.network(_image!.path, fit: BoxFit.cover)
-                    : Image.file(File(_image!.path), fit: BoxFit.cover)),
-          ),
+        AdminCustomInput(hint: 'Nome da Marca', controller: _nomeController),
+        const SizedBox(height: 32),
+        ImageUploadField(
+          selectedImage: _image,
+          existingImageUrl: widget.brand.imageUrl,
+          uploadLabel: 'Atualizar logo da marca',
+          onPick: _pickImage,
         ),
-        Positioned(
-          top: 10,
-          right: 10,
-          child: GestureDetector(
-            onTap: _pickImage,
-            child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.7),
-                    shape: BoxShape.circle),
-                child: const Icon(Icons.edit, color: Colors.white, size: 20)),
-          ),
-        ),
+        const SizedBox(height: 40),
       ],
     );
   }

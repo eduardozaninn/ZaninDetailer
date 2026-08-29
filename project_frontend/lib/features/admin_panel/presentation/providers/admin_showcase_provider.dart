@@ -16,68 +16,69 @@ class AdminShowcaseProvider extends ChangeNotifier {
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
 
-  List<ShowcaseModel> _vitrines = [];
-  List<ShowcaseModel> get vitrines => _vitrines;
-  bool get podeAdicionar => _vitrines.length < 5;
+  List<ShowcaseModel> _showcases = [];
+  List<ShowcaseModel> get showcases => _showcases;
+  bool get canAddMore => _showcases.length < 5;
 
-  Future<void> fetchVitrines() async {
+  Future<void> fetchShowcases() async {
     _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
 
-    final result = await _repository.getVitrines();
+    final result = await _repository.getShowcases();
     result.fold(
       (failure) => _errorMessage = failure.message,
-      (lista) => _vitrines = lista,
+      (list) => _showcases = list,
     );
 
     _isLoading = false;
     notifyListeners();
   }
 
-  Future<bool> adicionarVitrine() async {
-    final imagem =
+  Future<bool> addShowcase() async {
+    final image =
         await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
-    if (imagem == null) return false;
+    if (image == null) return false;
 
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
-    final result = await _repository.criarVitrine(imagem);
-    final sucesso = result.fold((f) {
+    final result = await _repository.createShowcase(image);
+    final success = result.fold((f) {
       _errorMessage = f.message;
       return false;
     }, (_) => true);
 
-    if (sucesso) await fetchVitrines();
+    if (success) await fetchShowcases();
     _isLoading = false;
     notifyListeners();
-    return sucesso;
+    return success;
   }
 
-  Future<bool> substituirVitrine(int id) async {
-    final imagem =
+  Future<bool> replaceShowcase(int id) async {
+    final image =
         await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
-    if (imagem == null) return false;
+    if (image == null) return false;
 
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
-    final result = await _repository.atualizarVitrine(id, imagem);
-    final sucesso = result.fold((f) {
+    final result = await _repository.updateShowcase(id, image);
+    final success = result.fold((f) {
       _errorMessage = f.message;
       return false;
     }, (_) => true);
 
-    if (sucesso) await fetchVitrines();
+    if (success) await fetchShowcases();
     _isLoading = false;
     notifyListeners();
-    return sucesso;
+    return success;
   }
 
-  Future<bool> deletarVitrine(int id) async {
-    final result = await _repository.deletarVitrine(id);
+  Future<bool> deleteShowcase(int id) async {
+    final result = await _repository.deleteShowcase(id);
     return result.fold(
       (f) {
         _errorMessage = f.message;
@@ -85,7 +86,7 @@ class AdminShowcaseProvider extends ChangeNotifier {
         return false;
       },
       (_) {
-        _vitrines.removeWhere((v) => v.id == id);
+        _showcases.removeWhere((v) => v.id == id);
         notifyListeners();
         return true;
       },

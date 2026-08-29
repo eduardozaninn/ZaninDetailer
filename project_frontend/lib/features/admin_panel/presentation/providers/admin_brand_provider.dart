@@ -15,25 +15,26 @@ class AdminBrandProvider extends ChangeNotifier {
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
 
-  List<AdminBrandModel> _marcas = [];
-  List<AdminBrandModel> get marcas => _marcas;
+  List<AdminBrandModel> _brands = [];
+  List<AdminBrandModel> get brands => _brands;
 
-  Future<void> fetchMarcas() async {
+  Future<void> fetchBrands() async {
     _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
 
-    final result = await _repository.getMarcas();
+    final result = await _repository.getBrands();
     result.fold(
       (failure) => _errorMessage = failure.message,
-      (lista) => _marcas = lista,
+      (list) => _brands = list,
     );
 
     _isLoading = false;
     notifyListeners();
   }
 
-  Future<bool> salvarNovaMarca({required String nome, XFile? imagem}) async {
-    if (nome.isEmpty) {
+  Future<bool> createBrand({required String name, XFile? image}) async {
+    if (name.isEmpty) {
       _errorMessage = 'O nome da marca é obrigatório.';
       return false;
     }
@@ -42,7 +43,7 @@ class AdminBrandProvider extends ChangeNotifier {
     notifyListeners();
 
     final result =
-        await _repository.salvarMarca(AdminBrandModel(name: nome), imagem);
+        await _repository.createBrand(AdminBrandModel(name: name), image);
     _isLoading = false;
     return result.fold(
       (f) {
@@ -57,9 +58,9 @@ class AdminBrandProvider extends ChangeNotifier {
     );
   }
 
-  Future<bool> atualizarMarca(
-      {required int id, required String nome, XFile? imagem}) async {
-    if (nome.isEmpty) {
+  Future<bool> updateBrand(
+      {required int id, required String name, XFile? image}) async {
+    if (name.isEmpty) {
       _errorMessage = 'O nome da marca é obrigatório.';
       return false;
     }
@@ -67,8 +68,8 @@ class AdminBrandProvider extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
-    final result = await _repository.atualizarMarca(
-        id, AdminBrandModel(id: id, name: nome), imagem);
+    final result = await _repository.updateBrand(
+        id, AdminBrandModel(id: id, name: name), image);
     _isLoading = false;
     return result.fold(
       (f) {
@@ -83,8 +84,8 @@ class AdminBrandProvider extends ChangeNotifier {
     );
   }
 
-  Future<bool> deletarMarca(int id) async {
-    final result = await _repository.deletarMarca(id);
+  Future<bool> deleteBrand(int id) async {
+    final result = await _repository.deleteBrand(id);
     return result.fold(
       (f) {
         _errorMessage = f.message;
@@ -92,7 +93,7 @@ class AdminBrandProvider extends ChangeNotifier {
         return false;
       },
       (s) {
-        _marcas.removeWhere((m) => m.id == id);
+        _brands.removeWhere((m) => m.id == id);
         notifyListeners();
         return true;
       },

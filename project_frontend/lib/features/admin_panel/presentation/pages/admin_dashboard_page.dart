@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../data/models/admin_agenda_model.dart';
+import '../../data/models/admin_appointment_model.dart';
 import '../providers/admin_provider.dart';
 import '../widgets/admin_custom_input.dart';
 import '../../../../core/router/app_router.dart';
@@ -23,7 +23,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AdminProvider>().fetchAgendamentos();
+      context.read<AdminProvider>().fetchAppointments();
       _showLoginSuccessIfNeeded();
     });
   }
@@ -33,7 +33,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     if (extra is! Map || extra['showLoginSuccess'] != true) return;
 
     setState(() => _showLoginToast = true);
-    Future.delayed(const Duration(seconds: 3), () {
+    Future.delayed(const Duration(seconds: 4), () {
       if (mounted) setState(() => _showLoginToast = false);
     });
   }
@@ -55,7 +55,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF22C55E),
+                  color: AppTheme.successGreen,
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
@@ -162,13 +162,13 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                     children: [
                       Expanded(
                           child: _buildMetricCard(
-                              value: provider.totalAgendamentos,
+                              value: provider.totalAppointments,
                               label: 'Agendamentos',
                               textTheme: textTheme)),
                       const SizedBox(width: 16),
                       Expanded(
                           child: _buildMetricCard(
-                              value: provider.previsaoFaturamento,
+                              value: provider.projectedRevenue,
                               label: 'Previsto',
                               textTheme: textTheme)),
                     ],
@@ -178,7 +178,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text('Agenda do Dia', style: textTheme.titleLarge),
-                      _buildSeletorData(context, provider, textTheme),
+                      _buildDateSelector(context, provider, textTheme),
                     ],
                   ),
                   const SizedBox(height: 20),
@@ -187,20 +187,48 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                         ? const Center(
                             child: CircularProgressIndicator(
                                 color: AppTheme.primaryRed))
-                        : provider.agendamentosAtivos.isEmpty
+                        : provider.appointmentsErrorMessage != null
                             ? Center(
-                                child: Text(
-                                    'Nenhum agendamento para essa data.',
-                                    style: textTheme.bodyMedium))
-                            : ListView.builder(
-                                itemCount: provider.agendamentosAtivos.length,
-                                itemBuilder: (context, index) {
-                                  return _buildAgendaCard(
-                                      context,
-                                      provider.agendamentosAtivos[index],
-                                      textTheme);
-                                },
-                              ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(24.0),
+                                  child: Column(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.center,
+                                    children: [
+                                      const Icon(Icons.wifi_off_rounded,
+                                          color: Colors.white38, size: 40),
+                                      const SizedBox(height: 12),
+                                      Text(
+                                        'Não foi possível carregar a agenda.\n${provider.appointmentsErrorMessage}',
+                                        textAlign: TextAlign.center,
+                                        style: textTheme.bodyMedium,
+                                      ),
+                                      const SizedBox(height: 16),
+                                      TextButton(
+                                        onPressed:
+                                            provider.fetchAppointments,
+                                        child:
+                                            const Text('Tentar novamente'),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
+                            : provider.activeAppointments.isEmpty
+                                ? Center(
+                                    child: Text(
+                                        'Nenhum agendamento para essa data.',
+                                        style: textTheme.bodyMedium))
+                                : ListView.builder(
+                                    itemCount:
+                                        provider.activeAppointments.length,
+                                    itemBuilder: (context, index) {
+                                      return _buildAppointmentCard(
+                                          context,
+                                          provider.activeAppointments[index],
+                                          textTheme);
+                                    },
+                                  ),
                   ),
                 ],
               ),
@@ -213,27 +241,27 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     );
   }
 
-  Widget _buildSeletorData(
+  Widget _buildDateSelector(
       BuildContext context, AdminProvider provider, TextTheme textTheme) {
-    final hoje = DateTime.now();
-    final selecionada = provider.dataSelecionada;
-    final isHoje = selecionada.year == hoje.year &&
-        selecionada.month == hoje.month &&
-        selecionada.day == hoje.day;
+    final today = DateTime.now();
+    final selected = provider.selectedDate;
+    final isToday = selected.year == today.year &&
+        selected.month == today.month &&
+        selected.day == today.day;
 
-    final label = isHoje
+    final label = isToday
         ? 'Hoje'
-        : DateFormat('dd/MM/yyyy').format(selecionada);
+        : DateFormat('dd/MM/yyyy').format(selected);
 
     return Material(
-      color: const Color(0xFF161616),
+      color: AppTheme.cardBackground,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () async {
-          final novaData = await showDatePicker(
+          final newDate = await showDatePicker(
             context: context,
-            initialDate: selecionada,
+            initialDate: selected,
             firstDate: DateTime(2024),
             lastDate: DateTime(2100),
             builder: (ctx, child) => Theme(
@@ -241,14 +269,14 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                 colorScheme: const ColorScheme.dark(
                   primary: AppTheme.primaryRed,
                   onPrimary: Colors.white,
-                  surface: Color(0xFF1E1E1E),
+                  surface: AppTheme.dialogBackground,
                 ),
               ),
               child: child!,
             ),
           );
-          if (novaData != null && context.mounted) {
-            await context.read<AdminProvider>().selecionarData(novaData);
+          if (newDate != null && context.mounted) {
+            await context.read<AdminProvider>().selectDate(newDate);
           }
         },
         child: Padding(
@@ -276,7 +304,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFF161616),
+        color: AppTheme.cardBackground,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
@@ -295,16 +323,31 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     );
   }
 
-  Widget _buildAgendaCard(
-      BuildContext context, AdminAgendaModel agenda, TextTheme textTheme) {
+  Color _statusColor(String status) {
+    final normalized = status.toLowerCase();
+    if (normalized.contains('cancel')) return AppTheme.dangerRed;
+    if (normalized.contains('conclu')) return AppTheme.successGreen;
+    return AppTheme.warningYellow;
+  }
+
+  Color _statusTextColor(String status) {
+    final normalized = status.toLowerCase();
+    if (normalized.contains('cancel') || normalized.contains('conclu')) {
+      return Colors.white;
+    }
+    return Colors.black;
+  }
+
+  Widget _buildAppointmentCard(BuildContext context,
+      AdminAppointmentModel appointment, TextTheme textTheme) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Material(
-        color: const Color(0xFF161616),
+        color: AppTheme.cardBackground,
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: () => _showAgendaActionsSheet(context, agenda),
+          onTap: () => _showAppointmentActionsSheet(context, appointment),
           child: Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -317,21 +360,23 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(agenda.veiculo, style: textTheme.titleLarge),
+                    Text(appointment.vehicle, style: textTheme.titleLarge),
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                          color: const Color(0xFFFFC107),
+                          color: _statusColor(appointment.status),
                           borderRadius: BorderRadius.circular(12)),
-                      child: Text(agenda.status,
-                          style: textTheme.labelLarge
-                              ?.copyWith(color: Colors.black, fontSize: 11)),
+                      child: Text(appointment.status,
+                          style: textTheme.labelLarge?.copyWith(
+                              color: _statusTextColor(appointment.status),
+                              fontSize: 11)),
                     ),
                   ],
                 ),
                 const SizedBox(height: 6),
-                Text('Placa: ${agenda.placa} | Cliente: ${agenda.cliente}',
+                Text(
+                    'Placa: ${appointment.licensePlate} | Cliente: ${appointment.clientName}',
                     style: textTheme.bodyMedium),
                 const SizedBox(height: 20),
                 Row(
@@ -340,7 +385,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                     Text(
                         context
                             .read<AdminProvider>()
-                            .nomeServico(agenda.serviceId),
+                            .serviceName(appointment.serviceId),
                         style: textTheme.titleLarge?.copyWith(fontSize: 17)),
                     Icon(Icons.more_horiz,
                         color: Colors.white.withValues(alpha: 0.4)),
@@ -354,10 +399,11 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     );
   }
 
-  void _showAgendaActionsSheet(BuildContext context, AdminAgendaModel agenda) {
+  void _showAppointmentActionsSheet(
+      BuildContext context, AdminAppointmentModel appointment) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1E1E1E),
+      backgroundColor: AppTheme.dialogBackground,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (sheetContext) {
@@ -380,7 +426,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Text(agenda.cliente,
+                  child: Text(appointment.clientName,
                       style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -394,7 +440,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                       style: TextStyle(color: Colors.white)),
                   onTap: () {
                     Navigator.pop(sheetContext);
-                    _showReagendarDialog(context, agenda);
+                    _showRescheduleDialog(context, appointment);
                   },
                 ),
                 ListTile(
@@ -404,7 +450,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                       style: TextStyle(color: Colors.white)),
                   onTap: () {
                     Navigator.pop(sheetContext);
-                    _showEditarClienteDialog(context, agenda);
+                    _showEditClientDialog(context, appointment);
                   },
                 ),
                 ListTile(
@@ -414,7 +460,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                       style: TextStyle(color: Colors.white)),
                   onTap: () {
                     Navigator.pop(sheetContext);
-                    _showConcluirDialog(context, agenda);
+                    _showCompleteDialog(context, appointment);
                   },
                 ),
                 ListTile(
@@ -424,7 +470,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                       style: TextStyle(color: Colors.redAccent)),
                   onTap: () {
                     Navigator.pop(sheetContext);
-                    _showCancelarDialog(context, agenda);
+                    _showCancelDialog(context, appointment);
                   },
                 ),
               ],
@@ -435,27 +481,38 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     );
   }
 
-  void _mostrarResultadoAcao(
-      BuildContext context, bool sucesso, String mensagemSucesso) {
+  void _showActionResult(
+      BuildContext context, bool success, String successMessage) {
     final provider = context.read<AdminProvider>();
-    final mensagem = sucesso
-        ? mensagemSucesso
-        : (provider.agendamentoErrorMessage ??
+    final message = success
+        ? successMessage
+        : (provider.appointmentActionErrorMessage ??
             'Não foi possível concluir a ação.');
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(mensagem),
+        content: Text(message),
         backgroundColor:
-            sucesso ? AppTheme.successGreen : AppTheme.primaryRed,
+            success ? AppTheme.successGreen : AppTheme.primaryRed,
       ),
     );
   }
 
-  Future<void> _showReagendarDialog(
-      BuildContext context, AdminAgendaModel agenda) async {
+  int? _parseAppointmentId(
+      BuildContext context, AdminAppointmentModel appointment) {
+    final id = int.tryParse(appointment.id);
+    if (id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('ID do agendamento inválido.')),
+      );
+    }
+    return id;
+  }
+
+  Future<void> _showRescheduleDialog(
+      BuildContext context, AdminAppointmentModel appointment) async {
     final now = DateTime.now();
-    final dataAtual = agenda.scheduledStart ?? now;
+    final currentDateTime = appointment.scheduledStart ?? now;
 
     Widget pickerTheme(BuildContext ctx, Widget? child) => Theme(
           data: Theme.of(ctx).copyWith(
@@ -473,110 +530,121 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           child: child!,
         );
 
-    final novaData = await showDatePicker(
+    final newDate = await showDatePicker(
       context: context,
       locale: const Locale('pt', 'BR'),
-      initialDate: dataAtual.isBefore(now) ? now : dataAtual,
+      initialDate:
+          currentDateTime.isBefore(now) ? now : currentDateTime,
       firstDate: now,
       lastDate: DateTime(now.year + 1),
       builder: pickerTheme,
     );
-    if (novaData == null || !context.mounted) return;
+    if (newDate == null || !context.mounted) return;
 
-    final novoHorario = await showTimePicker(
+    final newTime = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay.fromDateTime(dataAtual),
+      initialTime: TimeOfDay.fromDateTime(currentDateTime),
       builder: pickerTheme,
     );
-    if (novoHorario == null || !context.mounted) return;
+    if (newTime == null || !context.mounted) return;
 
-    final novaDataHora = DateTime(novaData.year, novaData.month, novaData.day,
-        novoHorario.hour, novoHorario.minute);
+    final newDateTime = DateTime(
+        newDate.year, newDate.month, newDate.day, newTime.hour, newTime.minute);
 
-    final sucesso = await context
+    final appointmentId = _parseAppointmentId(context, appointment);
+    if (appointmentId == null) return;
+
+    final success = await context
         .read<AdminProvider>()
-        .reagendarAgendamento(int.parse(agenda.id), novaDataHora);
+        .rescheduleAppointment(appointmentId, newDateTime);
 
     if (!context.mounted) return;
-    _mostrarResultadoAcao(
-        context, sucesso, 'Agendamento reagendado com sucesso!');
+    _showActionResult(
+        context, success, 'Agendamento reagendado com sucesso!');
   }
 
-  Future<void> _showCancelarDialog(
-      BuildContext context, AdminAgendaModel agenda) async {
+  Future<void> _showCancelDialog(
+      BuildContext context, AdminAppointmentModel appointment) async {
     final motivoController = TextEditingController();
 
-    final confirmar = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Cancelar agendamento?',
-            style: TextStyle(color: Colors.white)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Cliente: ${agenda.cliente}',
-                style: TextStyle(color: Colors.grey[400])),
-            const SizedBox(height: 16),
-            AdminCustomInput(
-              hint: 'Motivo do cancelamento',
-              controller: motivoController,
-              prefixIcon: Icons.notes_rounded,
+    try {
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppTheme.dialogBackground,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Cancelar agendamento?',
+              style: TextStyle(color: Colors.white)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Cliente: ${appointment.clientName}',
+                  style: TextStyle(color: Colors.grey[400])),
+              const SizedBox(height: 16),
+              AdminCustomInput(
+                hint: 'Motivo do cancelamento',
+                controller: motivoController,
+                prefixIcon: Icons.notes_rounded,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              style: TextButton.styleFrom(foregroundColor: Colors.white38),
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Voltar'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.dangerRed,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+                elevation: 0,
+              ),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Cancelar agendamento',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            style: TextButton.styleFrom(foregroundColor: Colors.white38),
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Voltar'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFC62828),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
-              elevation: 0,
-            ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Cancelar agendamento',
-                style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
+      );
 
-    if (confirmar != true || !context.mounted) return;
+      if (confirm != true || !context.mounted) return;
 
-    final motivo = motivoController.text.trim().isEmpty
-        ? 'Cancelado pelo administrador.'
-        : motivoController.text.trim();
+      final reason = motivoController.text.trim().isEmpty
+          ? 'Cancelado pelo administrador.'
+          : motivoController.text.trim();
 
-    final sucesso = await context
-        .read<AdminProvider>()
-        .cancelarAgendamento(int.parse(agenda.id), motivo);
+      final appointmentId = _parseAppointmentId(context, appointment);
+      if (appointmentId == null) return;
 
-    if (!context.mounted) return;
-    _mostrarResultadoAcao(
-        context, sucesso, 'Agendamento cancelado com sucesso.');
+      final success = await context
+          .read<AdminProvider>()
+          .cancelAppointment(appointmentId, reason);
+
+      if (!context.mounted) return;
+      _showActionResult(
+          context, success, 'Agendamento cancelado com sucesso.');
+    } finally {
+      motivoController.dispose();
+    }
   }
 
-  Future<void> _showConcluirDialog(
-      BuildContext context, AdminAgendaModel agenda) async {
-    final confirmar = await showDialog<bool>(
+  Future<void> _showCompleteDialog(
+      BuildContext context, AdminAppointmentModel appointment) async {
+    final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
+        backgroundColor: AppTheme.dialogBackground,
         shape:
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Concluir agendamento?',
             style: TextStyle(color: Colors.white)),
         content: Text(
-            'O agendamento de ${agenda.cliente} será marcado como concluído.',
+            'O agendamento de ${appointment.clientName} será marcado como concluído.',
             style: TextStyle(color: Colors.grey[400])),
         actions: [
           TextButton(
@@ -600,86 +668,101 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       ),
     );
 
-    if (confirmar != true || !context.mounted) return;
+    if (confirm != true || !context.mounted) return;
 
-    final sucesso = await context
+    final appointmentId = _parseAppointmentId(context, appointment);
+    if (appointmentId == null) return;
+
+    final success = await context
         .read<AdminProvider>()
-        .concluirAgendamento(int.parse(agenda.id));
+        .completeAppointment(appointmentId);
 
     if (!context.mounted) return;
-    _mostrarResultadoAcao(
-        context, sucesso, 'Agendamento concluído com sucesso.');
+    _showActionResult(
+        context, success, 'Agendamento concluído com sucesso.');
   }
 
-  Future<void> _showEditarClienteDialog(
-      BuildContext context, AdminAgendaModel agenda) async {
-    final nomeController = TextEditingController(text: agenda.cliente);
-    final telefoneController = TextEditingController(text: agenda.telefone);
-    final placaController = TextEditingController(text: agenda.placa);
-    final veiculoController = TextEditingController(text: agenda.veiculo);
+  Future<void> _showEditClientDialog(
+      BuildContext context, AdminAppointmentModel appointment) async {
+    final nomeController = TextEditingController(text: appointment.clientName);
+    final telefoneController = TextEditingController(text: appointment.phone);
+    final placaController = TextEditingController(text: appointment.licensePlate);
+    final veiculoController = TextEditingController(text: appointment.vehicle);
 
-    final salvar = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Editar dados do cliente',
-            style: TextStyle(color: Colors.white)),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AdminCustomInput(
-                  hint: 'Nome completo',
-                  controller: nomeController,
-                  prefixIcon: Icons.person_outline),
-              const SizedBox(height: 12),
-              AdminCustomInput(
-                  hint: 'WhatsApp',
-                  controller: telefoneController,
-                  prefixIcon: Icons.phone_outlined,
-                  keyboardType: TextInputType.phone),
-              const SizedBox(height: 12),
-              AdminCustomInput(
-                  hint: 'Placa',
-                  controller: placaController,
-                  prefixIcon: Icons.confirmation_number_outlined),
-              const SizedBox(height: 12),
-              AdminCustomInput(
-                  hint: 'Marca/Modelo do veículo',
-                  controller: veiculoController,
-                  prefixIcon: Icons.directions_car_outlined),
-            ],
+    try {
+      final salvar = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppTheme.dialogBackground,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Editar dados do cliente',
+              style: TextStyle(color: Colors.white)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AdminCustomInput(
+                    hint: 'Nome completo',
+                    controller: nomeController,
+                    prefixIcon: Icons.person_outline),
+                const SizedBox(height: 12),
+                AdminCustomInput(
+                    hint: 'WhatsApp',
+                    controller: telefoneController,
+                    prefixIcon: Icons.phone_outlined,
+                    keyboardType: TextInputType.phone),
+                const SizedBox(height: 12),
+                AdminCustomInput(
+                    hint: 'Placa',
+                    controller: placaController,
+                    prefixIcon: Icons.confirmation_number_outlined),
+                const SizedBox(height: 12),
+                AdminCustomInput(
+                    hint: 'Marca/Modelo do veículo',
+                    controller: veiculoController,
+                    prefixIcon: Icons.directions_car_outlined),
+              ],
+            ),
           ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancelar')),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Salvar',
+                  style: TextStyle(
+                      color: AppTheme.primaryRed,
+                      fontWeight: FontWeight.bold)),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancelar')),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Salvar',
-                style: TextStyle(
-                    color: AppTheme.primaryRed, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
+      );
 
-    if (salvar != true || !context.mounted) return;
+      if (salvar != true || !context.mounted) return;
 
-    final sucesso = await context.read<AdminProvider>().atualizarDadosCliente(
-          appointmentId: int.parse(agenda.id),
-          fullName: nomeController.text.trim(),
-          phone: telefoneController.text.trim(),
-          licensePlate: placaController.text.trim(),
-          vehicleBrandModel: veiculoController.text.trim(),
-        );
+      final appointmentId = _parseAppointmentId(context, appointment);
+      if (appointmentId == null) return;
 
-    if (!context.mounted) return;
-    _mostrarResultadoAcao(
-        context, sucesso, 'Dados do cliente atualizados com sucesso.');
+      final success =
+          await context.read<AdminProvider>().updateClientData(
+                appointmentId: appointmentId,
+                fullName: nomeController.text.trim(),
+                phone: telefoneController.text.trim(),
+                licensePlate: placaController.text.trim(),
+                vehicleBrandModel: veiculoController.text.trim(),
+              );
+
+      if (!context.mounted) return;
+      _showActionResult(
+          context, success, 'Dados do cliente atualizados com sucesso.');
+    } finally {
+      nomeController.dispose();
+      telefoneController.dispose();
+      placaController.dispose();
+      veiculoController.dispose();
+    }
   }
 }
 
@@ -737,19 +820,19 @@ class _CustomSpeedDialState extends State<CustomSpeedDial>
         _buildAnimatedButton(
           title: "Vitrine",
           icon: Icons.photo_library_outlined,
-          onTap: () => context.push(AppRouter.adminVitrines),
+          onTap: () => context.push(AppRouter.adminShowcases),
           index: 3,
         ),
         _buildAnimatedButton(
           title: "Marcas",
           icon: Icons.branding_watermark,
-          onTap: () => context.push(AppRouter.adminMarcasList),
+          onTap: () => context.push(AppRouter.adminBrandsList),
           index: 2,
         ),
         _buildAnimatedButton(
           title: "Catálogo",
           icon: Icons.list_alt,
-          onTap: () => context.push(AppRouter.adminServicosList),
+          onTap: () => context.push(AppRouter.adminServicesList),
           index: 1,
         ),
         FloatingActionButton(

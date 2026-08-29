@@ -49,10 +49,10 @@ class _PasswordUpdateViewState extends State<_PasswordUpdateView> {
         widget.resetToken, _newPasswordController.text);
 
     if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: const Text('Senha alterada com sucesso! Faça login.',
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Senha alterada com sucesso! Faça login.',
             style: TextStyle(color: Colors.white)),
-        backgroundColor: const Color(0xFF4CAF50),
+        backgroundColor: Color(0xFF4CAF50),
         behavior: SnackBarBehavior.floating,
       ));
       context.go(AppRouter.services);

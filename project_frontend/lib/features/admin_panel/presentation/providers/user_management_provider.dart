@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../data/models/user_model.dart';
-import '../../data/repositories/user_management_repository_impl.dart';
+import '../../domain/repositories/i_user_management_repository.dart';
 
 class UserManagementProvider extends ChangeNotifier {
-  final UserManagementRepository _repository;
+  final IUserManagementRepository _repository;
 
-  UserManagementProvider({required UserManagementRepository repository})
+  UserManagementProvider({required IUserManagementRepository repository})
       : _repository = repository;
 
   bool _isLoading = false;

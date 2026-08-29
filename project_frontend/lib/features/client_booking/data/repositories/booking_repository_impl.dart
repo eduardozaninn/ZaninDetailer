@@ -1,30 +1,16 @@
-import 'package:dio/dio.dart';
 import 'package:fpdart/fpdart.dart';
 import '../../domain/repositories/i_booking_repository.dart';
 import '../../data/models/service_model.dart';
 import '../../data/models/appointment_model.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/network/failure_mapper.dart';
 
 class BookingRepositoryImpl implements IBookingRepository {
   final ApiClient _apiClient;
 
   BookingRepositoryImpl({required ApiClient apiClient})
       : _apiClient = apiClient;
-
-  String _extractErrorMessage(dynamic error, String fallback) {
-    if (error is DioException && error.response != null) {
-      final data = error.response!.data;
-      if (data is Map && data.containsKey('detail')) {
-        final detail = data['detail'];
-        if (detail is String) return detail;
-        if (detail is List && detail.isNotEmpty) {
-          return detail[0]['msg']?.toString() ?? 'Erro de validação.';
-        }
-      }
-    }
-    return fallback;
-  }
 
   @override
   Future<Either<Failure, List<ServiceModel>>> getServices() async {
@@ -42,7 +28,7 @@ class BookingRepositoryImpl implements IBookingRepository {
 
       return Right(services);
     } catch (e) {
-      return Left(ServerFailure('Erro ao buscar serviços.'));
+      return Left(FailureMapper.map(e, fallback: 'Erro ao buscar serviços.'));
     }
   }
 
@@ -58,7 +44,8 @@ class BookingRepositoryImpl implements IBookingRepository {
           .toList();
       return Right(urls);
     } catch (e) {
-      return Left(ServerFailure('Erro ao buscar últimos trabalhos.'));
+      return Left(
+          FailureMapper.map(e, fallback: 'Erro ao buscar últimos trabalhos.'));
     }
   }
 
@@ -85,7 +72,8 @@ class BookingRepositoryImpl implements IBookingRepository {
 
       return Right(availableTimes);
     } catch (e) {
-      return Left(ServerFailure('Erro ao buscar horários disponíveis.'));
+      return Left(FailureMapper.map(e,
+          fallback: 'Erro ao buscar horários disponíveis.'));
     }
   }
 
@@ -117,8 +105,8 @@ class BookingRepositoryImpl implements IBookingRepository {
           AppointmentModel.fromJson(response.data as Map<String, dynamic>);
       return Right(appointment);
     } catch (e) {
-      return Left(ServerFailure(
-          _extractErrorMessage(e, 'Erro ao confirmar o agendamento.')));
+      return Left(
+          FailureMapper.map(e, fallback: 'Erro ao confirmar o agendamento.'));
     }
   }
 
@@ -141,48 +129,9 @@ class BookingRepositoryImpl implements IBookingRepository {
 
       return Right(brands);
     } catch (e) {
-      return Left(ServerFailure('Erro ao buscar marcas parceiras.'));
+      return Left(
+          FailureMapper.map(e, fallback: 'Erro ao buscar marcas parceiras.'));
     }
   }
 
-  @override
-  Future<Either<Failure, AppointmentModel>> getAppointmentDetails(
-      int appointmentId) async {
-    try {
-      final response =
-          await _apiClient.dio.get('/api/v1/appointments/$appointmentId');
-
-      if (response.statusCode == 200) {
-        final appointment = AppointmentModel.fromJson(response.data);
-        return Right(appointment);
-      }
-      return Left(ServerFailure('Não foi possível encontrar o agendamento.'));
-    } catch (e) {
-      return Left(ServerFailure(e.toString()));
-    }
-  }
-
-  @override
-  Future<Either<Failure, Unit>> cancelBooking({
-    required int appointmentId,
-    required String cancellationToken,
-    required String reason,
-  }) async {
-    try {
-      final response = await _apiClient.dio.post(
-        '/api/v1/appointments/$appointmentId/cancel',
-        data: {
-          'cancellation_token': cancellationToken,
-          'reason': reason,
-        },
-      );
-
-      if (response.statusCode == 200) {
-        return const Right(unit);
-      }
-      return Left(ServerFailure('Falha ao cancelar agendamento no servidor.'));
-    } catch (e) {
-      return Left(ServerFailure(e.toString()));
-    }
-  }
 }

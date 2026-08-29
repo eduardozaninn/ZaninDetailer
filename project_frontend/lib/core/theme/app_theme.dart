@@ -9,6 +9,9 @@ class AppTheme {
   static const Color textSecondary = Color(0xFF888888);
   static const Color successGreen = Color(0xFF22C55E);
   static const Color warningYellow = Color(0xFFFFC107);
+  static const Color dangerRed = Color(0xFFC62828);
+  static const Color cardBackground = Color(0xFF161616);
+  static const Color dialogBackground = Color(0xFF1E1E1E);
 
   static TextTheme get _textTheme {
     return TextTheme(

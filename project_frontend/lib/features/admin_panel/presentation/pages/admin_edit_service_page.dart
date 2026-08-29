@@ -1,33 +1,30 @@
-import 'dart:io';
-import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-import '../../../../core/theme/app_theme.dart';
 import '../../../../di/injection_container.dart' as di;
 import '../../data/models/admin_service_model.dart';
 import '../providers/admin_service_provider.dart';
 import '../widgets/admin_custom_input.dart';
-import '../widgets/dashed_rect_painter.dart';
+import '../widgets/admin_form_scaffold.dart';
+import '../widgets/image_upload_field.dart';
 
 class AdminEditServicePage extends StatelessWidget {
-  final AdminServiceModel servico;
-  const AdminEditServicePage({super.key, required this.servico});
+  final AdminServiceModel service;
+  const AdminEditServicePage({super.key, required this.service});
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => di.sl<AdminServiceProvider>(),
-      child: _AdminEditServiceView(servico: servico),
+      child: _AdminEditServiceView(service: service),
     );
   }
 }
 
 class _AdminEditServiceView extends StatefulWidget {
-  final AdminServiceModel servico;
-  const _AdminEditServiceView({required this.servico});
+  final AdminServiceModel service;
+  const _AdminEditServiceView({required this.service});
 
   @override
   State<_AdminEditServiceView> createState() => _AdminEditServiceViewState();
@@ -46,13 +43,13 @@ class _AdminEditServiceViewState extends State<_AdminEditServiceView> {
   void initState() {
     super.initState();
 
-    _nomeController = TextEditingController(text: widget.servico.name);
+    _nomeController = TextEditingController(text: widget.service.name);
     _precoController =
-        TextEditingController(text: widget.servico.price.toStringAsFixed(2));
-    _tempoController =
-        TextEditingController(text: widget.servico.durationMinutes.toString());
+        TextEditingController(text: widget.service.price.toStringAsFixed(2));
+    _tempoController = TextEditingController(
+        text: widget.service.durationMinutes.toString());
     _descricaoController =
-        TextEditingController(text: widget.servico.description ?? '');
+        TextEditingController(text: widget.service.description ?? '');
   }
 
   @override
@@ -87,13 +84,13 @@ class _AdminEditServiceViewState extends State<_AdminEditServiceView> {
     }
 
     final provider = context.read<AdminServiceProvider>();
-    final sucesso = await provider.atualizarServico(
-      id: widget.servico.id,
-      nome: _nomeController.text.trim(),
-      preco: _precoController.text.trim().replaceAll(',', '.'),
-      tempoEstimado: _tempoController.text.trim(),
-      descricao: _descricaoController.text.trim(),
-      imagem: _image,
+    final sucesso = await provider.updateService(
+      id: widget.service.id,
+      name: _nomeController.text.trim(),
+      price: _precoController.text.trim().replaceAll(',', '.'),
+      durationMinutes: _tempoController.text.trim(),
+      description: _descricaoController.text.trim(),
+      image: _image,
     );
 
     if (mounted) {
@@ -113,167 +110,37 @@ class _AdminEditServiceViewState extends State<_AdminEditServiceView> {
   @override
   Widget build(BuildContext context) {
     final isLoading = context.watch<AdminServiceProvider>().isLoading;
-    final textTheme = Theme.of(context).textTheme;
 
-    return Scaffold(
-      backgroundColor: AppTheme.background,
-      body: Stack(
-        children: [
-          Positioned(
-              top: -100,
-              right: -80,
-              child: Container(
-                  width: 350,
-                  height: 350,
-                  decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppTheme.primaryRed.withValues(alpha: 0.15)),
-                  child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 100, sigmaY: 100),
-                      child: Container(color: Colors.transparent)))),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 20),
-                  GestureDetector(
-                      onTap: () => context.pop(),
-                      child: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                              color: AppTheme.primaryRed.withValues(alpha: 0.3),
-                              shape: BoxShape.circle),
-                          child: const Icon(Icons.arrow_back_ios_new,
-                              color: AppTheme.primaryRed, size: 18))),
-                  const SizedBox(height: 32),
-                  Text('Editar Serviço', style: textTheme.headlineLarge),
-                  const SizedBox(height: 32),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          AdminCustomInput(
-                              hint: 'Nome do Serviço',
-                              controller: _nomeController),
-                          const SizedBox(height: 16),
-                          AdminCustomInput(
-                              hint: 'Preço (ex: 150.00)',
-                              prefixText: 'R\$ ',
-                              controller: _precoController,
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(
-                                      decimal: true)),
-                          const SizedBox(height: 16),
-                          AdminCustomInput(
-                              hint: 'Duração em minutos',
-                              controller: _tempoController,
-                              keyboardType: TextInputType.number),
-                          const SizedBox(height: 16),
-                          AdminCustomInput(
-                              hint: 'Descrição do Serviço',
-                              controller: _descricaoController),
-                          const SizedBox(height: 32),
-                          _image == null && widget.servico.imageUrl == null
-                              ? _buildDashedUploadArea(textTheme)
-                              : _buildImagePreview(),
-                          const SizedBox(height: 40),
-                        ],
-                      ),
-                    ),
-                  ),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed: isLoading ? null : _handleSave,
-                      style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primaryRed,
-                          disabledBackgroundColor:
-                              AppTheme.primaryRed.withValues(alpha: 0.5),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12))),
-                      child: isLoading
-                          ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
-                                  color: Colors.white, strokeWidth: 3))
-                          : Text('Salvar Alterações',
-                              style: textTheme.labelLarge),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDashedUploadArea(TextTheme textTheme) {
-    return GestureDetector(
-      onTap: _pickImage,
-      child: CustomPaint(
-          painter: DashedRectPainter(
-              color: Colors.white.withValues(alpha: 0.2),
-              strokeWidth: 2,
-              gap: 6),
-          child: Container(
-              width: double.infinity,
-              height: 200,
-              padding: const EdgeInsets.all(24),
-              color: Colors.transparent,
-              child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.camera_alt_outlined,
-                        color: Colors.white.withValues(alpha: 0.4), size: 60),
-                    const SizedBox(height: 16),
-                    Text('Atualizar imagem de destaque',
-                        textAlign: TextAlign.center,
-                        style: textTheme.bodyMedium)
-                  ]))),
-    );
-  }
-
-  Widget _buildImagePreview() {
-    return Stack(
+    return AdminFormScaffold(
+      title: 'Editar Serviço',
+      isLoading: isLoading,
+      saveLabel: 'Salvar Alterações',
+      onSave: _handleSave,
       children: [
-        Container(
-          width: double.infinity,
-          height: 200,
-          decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                  color: AppTheme.primaryRed.withValues(alpha: 0.5), width: 2)),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: _image == null
-                ? Image.network(widget.servico.imageUrl!, fit: BoxFit.cover)
-                : (kIsWeb
-                    ? Image.network(_image!.path, fit: BoxFit.cover)
-                    : Image.file(File(_image!.path), fit: BoxFit.cover)),
-          ),
+        AdminCustomInput(hint: 'Nome do Serviço', controller: _nomeController),
+        const SizedBox(height: 16),
+        AdminCustomInput(
+            hint: 'Preço (ex: 150.00)',
+            prefixText: 'R\$ ',
+            controller: _precoController,
+            keyboardType:
+                const TextInputType.numberWithOptions(decimal: true)),
+        const SizedBox(height: 16),
+        AdminCustomInput(
+            hint: 'Duração em minutos',
+            controller: _tempoController,
+            keyboardType: TextInputType.number),
+        const SizedBox(height: 16),
+        AdminCustomInput(
+            hint: 'Descrição do Serviço', controller: _descricaoController),
+        const SizedBox(height: 32),
+        ImageUploadField(
+          selectedImage: _image,
+          existingImageUrl: widget.service.imageUrl,
+          uploadLabel: 'Atualizar imagem de destaque',
+          onPick: _pickImage,
         ),
-        Positioned(
-          top: 10,
-          right: 10,
-          child: GestureDetector(
-            onTap: _pickImage,
-            child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.7),
-                    shape: BoxShape.circle),
-                child: const Icon(Icons.edit, color: Colors.white, size: 20)),
-          ),
-        ),
+        const SizedBox(height: 40),
       ],
     );
   }

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import '../../data/models/admin_agenda_model.dart';
+import '../../data/models/admin_appointment_model.dart';
 import '../../data/models/admin_service_model.dart';
 import '../../data/models/user_model.dart';
 import '../../domain/repositories/i_admin_repository.dart';
+import '../../../../core/utils/date_time_utils.dart';
+import '../../../../core/utils/string_utils.dart';
 
 class AdminProvider extends ChangeNotifier {
   final IAdminRepository _repository;
@@ -17,45 +18,44 @@ class AdminProvider extends ChangeNotifier {
   UserModel? _currentUser;
   UserModel? get currentUser => _currentUser;
 
-  List<AdminAgendaModel> _agendamentosHoje = [];
-  List<AdminAgendaModel> get agendamentosHoje => _agendamentosHoje;
+  List<AdminAppointmentModel> _todayAppointments = [];
+  List<AdminAppointmentModel> get todayAppointments => _todayAppointments;
 
-  List<AdminServiceModel> _servicos = [];
+  List<AdminServiceModel> _services = [];
 
-  DateTime _dataSelecionada = DateTime.now();
-  DateTime get dataSelecionada => _dataSelecionada;
+  DateTime _selectedDate = DateTime.now();
+  DateTime get selectedDate => _selectedDate;
 
-  Future<void> selecionarData(DateTime data) async {
-    _dataSelecionada = data;
-    await fetchAgendamentos();
+  Future<void> selectDate(DateTime date) async {
+    _selectedDate = date;
+    await fetchAppointments();
   }
 
-  List<AdminAgendaModel> get agendamentosAtivos => _agendamentosHoje
+  List<AdminAppointmentModel> get activeAppointments => _todayAppointments
       .where((a) => !a.status.toLowerCase().contains('cancel'))
       .toList();
 
-  String get totalAgendamentos =>
-      agendamentosAtivos.length.toString().padLeft(2, '0');
+  String get totalAppointments =>
+      activeAppointments.length.toString().padLeft(2, '0');
 
-  String get previsaoFaturamento {
+  String get projectedRevenue {
     double total = 0.0;
-    for (var agenda in agendamentosAtivos) {
-      total += agenda.totalPrice ?? 0.0;
+    for (var appointment in activeAppointments) {
+      total += appointment.totalPrice ?? 0.0;
     }
 
-    final formatador = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
-    return formatador.format(total);
+    return StringUtils.formatCurrency(total);
   }
 
-  String nomeServico(int serviceId) {
-    for (final servico in _servicos) {
-      if (servico.id == serviceId) return servico.name;
+  String serviceName(int serviceId) {
+    for (final service in _services) {
+      if (service.id == serviceId) return service.name;
     }
     return 'Serviço #$serviceId';
   }
 
-  Future<void> fetchMeuPerfil() async {
-    final result = await _repository.getMeuPerfil();
+  Future<void> fetchMyProfile() async {
+    final result = await _repository.getMyProfile();
     result.fold(
       (failure) => debugPrint("Erro ao carregar perfil: ${failure.message}"),
       (user) {
@@ -65,97 +65,101 @@ class AdminProvider extends ChangeNotifier {
     );
   }
 
-  Future<void> fetchAgendamentos() async {
+  String? _appointmentsErrorMessage;
+  String? get appointmentsErrorMessage => _appointmentsErrorMessage;
+
+  Future<void> fetchAppointments() async {
     _isLoading = true;
+    _appointmentsErrorMessage = null;
     notifyListeners();
 
-    await fetchMeuPerfil();
+    await fetchMyProfile();
 
-    if (_servicos.isEmpty) {
-      final servicosResult = await _repository.getServicos();
-      servicosResult.fold((_) {}, (servicos) => _servicos = servicos);
+    if (_services.isEmpty) {
+      final servicesResult = await _repository.getServices();
+      servicesResult.fold((_) {}, (services) => _services = services);
     }
 
-    final result = await _repository.getAgendamentosHoje(_dataSelecionada);
+    final result = await _repository.getTodayAppointments(_selectedDate);
 
     result.fold(
       (failure) {
         debugPrint("Erro: ${failure.message}");
-        _agendamentosHoje = [];
+        _todayAppointments = [];
+        _appointmentsErrorMessage = failure.message;
       },
-      (agenda) => _agendamentosHoje = agenda,
+      (appointments) => _todayAppointments = appointments,
     );
 
     _isLoading = false;
     notifyListeners();
   }
 
-  String? _agendamentoErrorMessage;
-  String? get agendamentoErrorMessage => _agendamentoErrorMessage;
+  String? _appointmentActionErrorMessage;
+  String? get appointmentActionErrorMessage => _appointmentActionErrorMessage;
 
-  Future<bool> reagendarAgendamento(
-      int appointmentId, DateTime novoHorario) async {
-    _agendamentoErrorMessage = null;
+  Future<bool> rescheduleAppointment(
+      int appointmentId, DateTime newScheduledStart) async {
+    _appointmentActionErrorMessage = null;
 
-    final isoDateStr =
-        "${DateFormat("yyyy-MM-dd'T'HH:mm:ss").format(novoHorario)}-03:00";
+    final isoDateStr = DateTimeUtils.toIsoWithBrazilOffset(newScheduledStart);
 
     final result =
-        await _repository.reagendarAgendamento(appointmentId, isoDateStr);
+        await _repository.rescheduleAppointment(appointmentId, isoDateStr);
 
     return result.fold((failure) {
       debugPrint("Erro ao reagendar agendamento: ${failure.message}");
-      _agendamentoErrorMessage = failure.message;
+      _appointmentActionErrorMessage = failure.message;
       notifyListeners();
       return false;
     }, (_) async {
-      await fetchAgendamentos();
+      await fetchAppointments();
       return true;
     });
   }
 
-  Future<bool> cancelarAgendamento(int appointmentId, String motivo) async {
-    _agendamentoErrorMessage = null;
+  Future<bool> cancelAppointment(int appointmentId, String reason) async {
+    _appointmentActionErrorMessage = null;
 
-    final result = await _repository.cancelarAgendamento(appointmentId, motivo);
+    final result = await _repository.cancelAppointment(appointmentId, reason);
 
     return result.fold((failure) {
       debugPrint("Erro ao cancelar agendamento: ${failure.message}");
-      _agendamentoErrorMessage = failure.message;
+      _appointmentActionErrorMessage = failure.message;
       notifyListeners();
       return false;
     }, (_) async {
-      await fetchAgendamentos();
+      await fetchAppointments();
       return true;
     });
   }
 
-  Future<bool> concluirAgendamento(int appointmentId) async {
-    _agendamentoErrorMessage = null;
+  Future<bool> completeAppointment(int appointmentId) async {
+    _appointmentActionErrorMessage = null;
 
-    final result = await _repository.concluirAgendamento(appointmentId);
+    final result = await _repository.completeAppointment(appointmentId);
 
     return result.fold((failure) {
       debugPrint("Erro ao concluir agendamento: ${failure.message}");
-      _agendamentoErrorMessage = failure.message;
+      _appointmentActionErrorMessage = failure.message;
       notifyListeners();
       return false;
     }, (_) async {
-      await fetchAgendamentos();
+      await fetchAppointments();
       return true;
     });
   }
 
-  Future<bool> atualizarDadosCliente({
+  Future<bool> updateClientData({
     required int appointmentId,
     required String fullName,
     required String phone,
     required String licensePlate,
     required String vehicleBrandModel,
   }) async {
-    _agendamentoErrorMessage = null;
+    _appointmentActionErrorMessage = null;
 
-    final result = await _repository.atualizarDadosCliente(
+    final result = await _repository.updateClientData(
       appointmentId: appointmentId,
       fullName: fullName,
       phone: phone,
@@ -165,11 +169,11 @@ class AdminProvider extends ChangeNotifier {
 
     return result.fold((failure) {
       debugPrint("Erro ao atualizar dados do cliente: ${failure.message}");
-      _agendamentoErrorMessage = failure.message;
+      _appointmentActionErrorMessage = failure.message;
       notifyListeners();
       return false;
     }, (_) async {
-      await fetchAgendamentos();
+      await fetchAppointments();
       return true;
     });
   }

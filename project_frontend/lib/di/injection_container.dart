@@ -15,6 +15,7 @@ import '../features/client_booking/domain/repositories/i_booking_repository.dart
 import '../features/client_booking/data/repositories/booking_repository_impl.dart';
 import '../features/client_booking/presentation/providers/service_selection_provider.dart';
 import '../features/client_booking/presentation/providers/booking_provider.dart';
+import '../features/admin_panel/domain/repositories/i_user_management_repository.dart';
 import '../features/admin_panel/data/repositories/user_management_repository_impl.dart';
 
 final sl = GetIt.instance;
@@ -40,7 +41,7 @@ Future<void> init() async {
   sl.registerFactory(() => AdminBrandProvider(repository: sl()));
   sl.registerFactory(() => AdminShowcaseProvider(repository: sl<IAdminRepository>()));
 
-  sl.registerLazySingleton<UserManagementRepository>(
+  sl.registerLazySingleton<IUserManagementRepository>(
       () => UserManagementRepository(apiClient: sl<ApiClient>()));
 
   sl.registerLazySingleton<IBookingRepository>(

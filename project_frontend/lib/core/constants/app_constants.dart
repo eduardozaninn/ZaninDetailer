@@ -1,7 +1,6 @@
 class StoreKeys {
   static const String accessToken = 'access_token';
   static const String refreshToken = 'refresh_token';
-  static const String lastBookingToken = 'last_booking_token';
 }
 
 class AppConstants {
