@@ -326,13 +326,17 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   Color _statusColor(String status) {
     final normalized = status.toLowerCase();
     if (normalized.contains('cancel')) return AppTheme.dangerRed;
-    if (normalized.contains('conclu')) return AppTheme.successGreen;
+    if (normalized.contains('complet') || normalized.contains('conclu')) {
+      return AppTheme.successGreen;
+    }
     return AppTheme.warningYellow;
   }
 
   Color _statusTextColor(String status) {
     final normalized = status.toLowerCase();
-    if (normalized.contains('cancel') || normalized.contains('conclu')) {
+    if (normalized.contains('cancel') ||
+        normalized.contains('complet') ||
+        normalized.contains('conclu')) {
       return Colors.white;
     }
     return Colors.black;

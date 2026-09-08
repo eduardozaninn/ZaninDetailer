@@ -12,8 +12,7 @@ class ApiClient {
   // dispara o refresh de verdade — as demais esperam o mesmo resultado.
   Completer<bool>? _refreshCompleter;
 
-  static const String baseUrl =
-      'https://lashaun-unbumped-squarely.ngrok-free.dev/api/v1/';
+  static const String baseUrl = 'https://zanindetailer-production.up.railway.app/api/v1/';
 
   ApiClient({required FlutterSecureStorage storage}) : _storage = storage {
     dio = Dio(BaseOptions(
@@ -21,9 +20,6 @@ class ApiClient {
       connectTimeout: const Duration(seconds: AppConstants.apiTimeoutSeconds),
       receiveTimeout: const Duration(seconds: AppConstants.apiTimeoutSeconds),
       contentType: 'application/json',
-      headers: {
-        'ngrok-skip-browser-warning': 'true',
-      },
     ));
 
     if (kDebugMode) {

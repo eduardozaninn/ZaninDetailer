@@ -21,7 +21,7 @@ class AdminRepositoryImpl implements IAdminRepository {
     if (imagem == null) return;
     formData.files.add(MapEntry(
       'image',
-      await MultipartFile.fromFile(imagem.path, filename: imagem.name),
+      MultipartFile.fromBytes(await imagem.readAsBytes(), filename: imagem.name),
     ));
   }
 
