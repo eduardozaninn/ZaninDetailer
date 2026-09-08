@@ -72,7 +72,11 @@ class AppointmentService:
         # falha na chamada ao Google Calendar corrompia a conexão que a
         # consulta ao banco ainda estava usando, causando 500 em cascata em
         # requisições seguintes.
-        busy_google = await get_busy_slots(day_start, day_end)
+        try:
+            busy_google = await get_busy_slots(day_start, day_end)
+        except Exception as exc:
+            logger.warning("Google Calendar indisponível ao listar horários: %s", exc, exc_info=True)
+            busy_google = []
         busy_db = await self._repo.get_conflicting(day_start, day_end)
 
         busy_intervals: list[tuple[datetime, datetime]] = [(lunch_start, lunch_end)]
@@ -338,7 +342,11 @@ class AppointmentService:
         return await self._repo.get_by_id(appointment_id)
 
     async def _check_no_calendar_conflict(self, start: datetime, end: datetime) -> None:
-        busy_google = await get_busy_slots(start, end)
+        try:
+            busy_google = await get_busy_slots(start, end)
+        except Exception as exc:
+            logger.warning("Google Calendar indisponível ao checar conflito: %s", exc, exc_info=True)
+            return
         for b in busy_google:
             b_start = datetime.fromisoformat(b["start"]).astimezone(TZ)
             b_end   = datetime.fromisoformat(b["end"]).astimezone(TZ)
