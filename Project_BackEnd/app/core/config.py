@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     @property
     def cors_origins(self) -> list[str]:
         if self.app_env == "production":
-            return ["https://zanin-detailer.vercel.app"]
+            return ["https://zanin-detailer-seven.vercel.app"]
         return ["*"]
 
     @computed_field
