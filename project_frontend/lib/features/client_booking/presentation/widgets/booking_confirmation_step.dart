@@ -334,10 +334,14 @@ class BookingConfirmationStep extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(12))),
                           onPressed: () =>
                               _openWhatsApp(context, rescheduleMessage),
-                          child: const Text("Reagendar",
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600)),
+                          child: const FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text("Reagendar",
+                                maxLines: 1,
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600)),
+                          ),
                         ),
                       ),
                     ),
