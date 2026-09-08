@@ -8,7 +8,9 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 from app.api.v1.router import api_router
+from app.core.config import settings
 from app.core.limiter import limiter
+from app.core.logging_config import setup_logging
 from app.infra.database import engine
 
 
@@ -19,6 +21,8 @@ async def lifespan(app: FastAPI):
 
 
 def create_app() -> FastAPI:
+    setup_logging()
+
     app = FastAPI(
         title="ZaninDetailer API",
         version="0.1.0",
@@ -33,7 +37,7 @@ def create_app() -> FastAPI:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=settings.cors_origins,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Content-Type", "Authorization", "ngrok-skip-browser-warning"],
         max_age=86400,

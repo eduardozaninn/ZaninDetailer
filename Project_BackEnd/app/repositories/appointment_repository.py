@@ -1,10 +1,10 @@
 from datetime import datetime
+from decimal import Decimal
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, exists, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models import appointment
 from app.models.appointment import Appointment, AppointmentHistory, AppointmentStatus
 from app.models.client import Client
 
@@ -54,7 +54,7 @@ class AppointmentRepository:
         service_id: int,
         scheduled_start: datetime,
         scheduled_end: datetime,
-        total_price,
+        total_price: Decimal,
     ) -> Appointment:
         appointment = Appointment(
             client=client,
@@ -100,6 +100,12 @@ class AppointmentRepository:
         )
         return appointment
     
+    async def exists_for_service(self, service_id: int) -> bool:
+        result = await self._session.execute(
+            select(exists().where(Appointment.service_id == service_id))
+        )
+        return result.scalar_one()
+
     async def list_by_date_range(
         self, start: datetime, end: datetime
     ) -> list[Appointment]:

@@ -30,7 +30,7 @@ class ServiceBase(BaseModel):
     @field_validator("name")
     @classmethod
     def normalize_name(cls, v: str) -> str:
-        return v.strip().title()
+        return " ".join(word.capitalize() for word in v.strip().split())
 
     @field_validator("price")
     @classmethod
@@ -52,7 +52,7 @@ class ServiceUpdate(BaseModel):
     @classmethod
     def normalize_name(cls, v: str | None) -> str | None:
         if v is not None:
-            return v.strip().title()
+            return " ".join(word.capitalize() for word in v.strip().split())
         return v
 
     @field_validator("price")

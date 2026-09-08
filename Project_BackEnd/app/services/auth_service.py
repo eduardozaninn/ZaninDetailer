@@ -1,4 +1,7 @@
+import logging
+
 from fastapi import HTTPException, status
+from supabase_auth.errors import AuthApiError
 
 from app.infra.supabase_client import get_supabase_admin, get_supabase_client
 from app.schemas.auth import (
@@ -11,6 +14,8 @@ from app.schemas.auth import (
     UserResponse,
     UserUpdate,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class AuthService:
@@ -40,6 +45,7 @@ class AuthService:
         except HTTPException:
             raise
         except Exception as e:
+            logger.warning("Falha no login para %s: %s", data.email, e)
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="E-mail ou senha incorretos.",
@@ -70,6 +76,7 @@ class AuthService:
         except HTTPException:
             raise
         except Exception as e:
+            logger.warning("Falha ao renovar token: %s", e)
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Refresh token inválido ou expirado.",
@@ -82,6 +89,7 @@ class AuthService:
             supabase.auth.reset_password_email(data.email)
             return {"message": "Se o e-mail estiver cadastrado, você receberá as instruções em breve."}
         except Exception as e:
+            logger.warning("Falha ao solicitar reset de senha para %s: %s", data.email, e)
             return {"message": "Se o e-mail estiver cadastrado, você receberá as instruções em breve."}
 
     def update_password(self, data: PasswordUpdateRequest) -> dict:
@@ -102,6 +110,7 @@ class AuthService:
         except HTTPException:
             raise
         except Exception as e:
+            logger.warning("Falha ao atualizar senha via reset: %s", e)
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Token inválido ou expirado. Solicite um novo reset de senha.",
@@ -125,6 +134,7 @@ class AuthService:
             ]
             return UserListResponse(total=len(users), users=users)
         except Exception as e:
+            logger.exception("Erro ao listar usuários")
             raise HTTPException(status_code=500, detail="Erro ao listar usuários.") from e
 
     def get_user(self, user_id: str) -> UserResponse:
@@ -143,6 +153,7 @@ class AuthService:
         except HTTPException:
             raise
         except Exception as e:
+            logger.exception("Erro ao buscar usuário %s", user_id)
             raise HTTPException(status_code=500, detail="Erro ao buscar usuário.") from e
 
     def create_user(self, data: UserCreate) -> UserResponse:
@@ -161,12 +172,16 @@ class AuthService:
                 full_name=(u.user_metadata or {}).get("full_name"),
                 created_at=str(u.created_at) if u.created_at else None,
             )
-        except Exception as e:
-            if "already registered" in str(e).lower() or "already been registered" in str(e).lower():
+        except AuthApiError as e:
+            if e.code in ("email_exists", "user_already_exists"):
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
                     detail="Este e-mail já está cadastrado.",
-                )
+                ) from e
+            logger.exception("Erro ao criar usuário %s", data.email)
+            raise HTTPException(status_code=500, detail="Erro ao criar usuário.") from e
+        except Exception as e:
+            logger.exception("Erro ao criar usuário %s", data.email)
             raise HTTPException(status_code=500, detail="Erro ao criar usuário.") from e
 
     def update_user(self, user_id: str, data: UserUpdate) -> UserResponse:
@@ -192,6 +207,7 @@ class AuthService:
         except HTTPException:
             raise
         except Exception as e:
+            logger.exception("Erro ao atualizar usuário %s", user_id)
             raise HTTPException(status_code=500, detail="Erro ao atualizar usuário.") from e
 
     def delete_user(self, user_id: str) -> dict:
@@ -200,4 +216,5 @@ class AuthService:
             admin.auth.admin.delete_user(user_id)
             return {"message": "Usuário removido com sucesso."}
         except Exception as e:
+            logger.exception("Erro ao remover usuário %s", user_id)
             raise HTTPException(status_code=500, detail="Erro ao remover usuário.") from e

@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -23,6 +24,8 @@ from app.schemas.appointment import (
     AvailableSlot,
     ClientUpdate,
 )
+
+logger = logging.getLogger(__name__)
 
 TZ = ZoneInfo(settings.calendar_timezone)
 PAUSE_MINUTES = 20
@@ -64,10 +67,13 @@ class AppointmentService:
         if day_end <= datetime.now(tz=TZ):
             return [], service.duration_minutes
 
-        busy_google, busy_db = await _gather(
-            get_busy_slots(day_start, day_end),
-            self._repo.get_conflicting(day_start, day_end),
-        )
+        # Sequencial (não asyncio.gather): a AsyncSession do SQLAlchemy não é
+        # segura para uso concorrente por duas corrotinas ao mesmo tempo — uma
+        # falha na chamada ao Google Calendar corrompia a conexão que a
+        # consulta ao banco ainda estava usando, causando 500 em cascata em
+        # requisições seguintes.
+        busy_google = await get_busy_slots(day_start, day_end)
+        busy_db = await self._repo.get_conflicting(day_start, day_end)
 
         busy_intervals: list[tuple[datetime, datetime]] = [(lunch_start, lunch_end)]
 
@@ -133,6 +139,7 @@ class AppointmentService:
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=f"Horário de início não pode ser a partir das {settings.business_hour_end:02d}h.",
             )
+        self._validate_not_lunch(scheduled_start)
 
         slot_duration  = timedelta(minutes=service.duration_minutes + PAUSE_MINUTES)
         scheduled_end  = self._calculate_end(scheduled_start, slot_duration)
@@ -143,6 +150,7 @@ class AppointmentService:
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Horário indisponível. Escolha outro horário.",
             )
+        await self._check_no_calendar_conflict(scheduled_start, scheduled_end)
 
         client = await self._client_repo.get_or_create(data.client)
 
@@ -177,7 +185,7 @@ class AppointmentService:
             )
             appointment.google_event_id = event_id
         except Exception as exc:
-            print(f"[WARN] Google Calendar falhou: {exc}")
+            logger.warning("Google Calendar falhou ao criar evento: %s", exc, exc_info=True)
 
         await self._repo.save(appointment)
 
@@ -212,16 +220,20 @@ class AppointmentService:
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=f"Horário de início não pode ser a partir das {settings.business_hour_end:02d}h.",
             )
+        self._validate_not_lunch(new_start)
 
         slot_duration = timedelta(minutes=service.duration_minutes + PAUSE_MINUTES)
         new_end       = self._calculate_end(new_start, slot_duration)
 
-        conflicts = await self._repo.get_conflicting(new_start, new_end, exclude_id=appointment_id)
+        conflicts = await self._repo.get_conflicting(
+            new_start, new_end, exclude_id=appointment_id, for_update=True
+        )
         if conflicts:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Horário indisponível. Escolha outro horário.",
             )
+        await self._check_no_calendar_conflict(new_start, new_end)
 
         old_start = appointment.scheduled_start
         appointment.scheduled_start = new_start
@@ -239,7 +251,7 @@ class AppointmentService:
             try:
                 await update_calendar_event(appointment.google_event_id, start=new_start, end=new_end)
             except Exception as exc:
-                print(f"[WARN] Falha ao atualizar Google Calendar: {exc}")
+                logger.warning("Falha ao atualizar Google Calendar: %s", exc, exc_info=True)
 
         await self._repo.save(appointment)
 
@@ -268,7 +280,7 @@ class AppointmentService:
                 await delete_calendar_event(appointment.google_event_id)
                 appointment.google_event_id = None
             except Exception as exc:
-                print(f"[WARN] Falha ao remover evento do Google Calendar: {exc}")
+                logger.warning("Falha ao remover evento do Google Calendar: %s", exc, exc_info=True)
 
         await self._repo.save(appointment)
         
@@ -325,6 +337,17 @@ class AppointmentService:
         await self._client_repo.update(client, data)
         return await self._repo.get_by_id(appointment_id)
 
+    async def _check_no_calendar_conflict(self, start: datetime, end: datetime) -> None:
+        busy_google = await get_busy_slots(start, end)
+        for b in busy_google:
+            b_start = datetime.fromisoformat(b["start"]).astimezone(TZ)
+            b_end   = datetime.fromisoformat(b["end"]).astimezone(TZ)
+            if b_start < end and b_end > start:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Horário indisponível. Escolha outro horário.",
+                )
+
     @staticmethod
     def _calculate_end(start: datetime, duration: timedelta) -> datetime:
         lunch_start = start.replace(hour=LUNCH_START, minute=0, second=0, microsecond=0)
@@ -333,6 +356,16 @@ class AppointmentService:
         if start < lunch_start and end > lunch_start:
             end += (lunch_end - lunch_start)
         return end
+
+    @staticmethod
+    def _validate_not_lunch(start: datetime) -> None:
+        lunch_start = start.replace(hour=LUNCH_START, minute=0, second=0, microsecond=0)
+        lunch_end   = start.replace(hour=LUNCH_END,   minute=0, second=0, microsecond=0)
+        if lunch_start <= start < lunch_end:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Não é possível agendar entre {LUNCH_START:02d}h e {LUNCH_END:02d}h (horário de almoço).",
+            )
 
     async def _get_or_404(self, appointment_id: int) -> Appointment:
         appt = await self._repo.get_by_id(appointment_id)
@@ -347,8 +380,3 @@ class AppointmentService:
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="Este agendamento já está cancelado.",
             )
-
-
-async def _gather(coro1, coro2):
-    import asyncio
-    return await asyncio.gather(coro1, coro2)

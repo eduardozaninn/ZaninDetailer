@@ -41,14 +41,24 @@ class ShowcaseService:
 
     async def update_showcase(self, showcase_id: int, image: UploadFile) -> Showcase:
         showcase = await self.get_or_404(showcase_id)
-        await delete_image(showcase.image_url)
-        image_url = await upload_image(image)
-        showcase = await self._repo.update(showcase, image_url)
+        old_image_url = showcase.image_url
+
+        new_image_url = await upload_image(image)
+        showcase = await self._repo.update(showcase, new_image_url)
+
+        if old_image_url:
+            await delete_image(old_image_url)
+
         await showcases_cache.invalidate("list")
         return showcase
 
     async def delete_showcase(self, showcase_id: int) -> None:
         showcase = await self.get_or_404(showcase_id)
-        await delete_image(showcase.image_url)
+        image_url = showcase.image_url
+
         await self._repo.delete(showcase)
+
+        if image_url:
+            await delete_image(image_url)
+
         await showcases_cache.invalidate("list")

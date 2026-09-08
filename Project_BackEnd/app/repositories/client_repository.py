@@ -1,4 +1,5 @@
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.client import Client
@@ -49,4 +50,12 @@ class ClientRepository:
                 client.vehicle_brand_model = data.vehicle_brand_model
             await self._session.flush()
             return client
-        return await self.create(data)
+
+        try:
+            return await self.create(data)
+        except IntegrityError:
+            await self._session.rollback()
+            client = await self.get_by_plate(data.license_plate)
+            if client is None:
+                raise
+            return client

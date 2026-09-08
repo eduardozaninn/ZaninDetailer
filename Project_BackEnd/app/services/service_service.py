@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.cache import services_cache
 from app.infra.supabase_storage import delete_image, upload_image
 from app.models.service import Service
+from app.repositories.appointment_repository import AppointmentRepository
 from app.repositories.service_repository import ServiceRepository
 from app.schemas.service import ServiceCreate, ServiceUpdate
 
@@ -11,6 +12,7 @@ from app.schemas.service import ServiceCreate, ServiceUpdate
 class ServiceService:
     def __init__(self, session: AsyncSession) -> None:
         self._repo = ServiceRepository(session)
+        self._appointment_repo = AppointmentRepository(session)
 
     async def get_or_404(self, service_id: int) -> Service:
         service = await self._repo.get_by_id(service_id)
@@ -67,7 +69,15 @@ class ServiceService:
 
     async def delete_service(self, service_id: int) -> None:
         service = await self.get_or_404(service_id)
-        if service.image_url:
-            await delete_image(service.image_url)
+
+        if await self._appointment_repo.exists_for_service(service_id):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Este serviço possui agendamentos no histórico e não pode ser excluído.",
+            )
+
+        image_url = service.image_url
         await self._repo.delete(service)
+        if image_url:
+            await delete_image(image_url)
         await services_cache.invalidate("list:")

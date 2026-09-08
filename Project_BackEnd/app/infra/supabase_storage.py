@@ -1,9 +1,12 @@
+import logging
 import uuid
 
 import anyio
 from fastapi import HTTPException, UploadFile
 
 from app.infra.supabase_client import get_supabase_admin
+
+logger = logging.getLogger(__name__)
 
 BUCKET = "bucket-imagens-zanindetailer"
 ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp"}
@@ -43,7 +46,7 @@ def _do_delete(url: str) -> None:
         admin = get_supabase_admin()
         admin.storage.from_(BUCKET).remove([filename])
     except Exception:
-        pass
+        logger.warning("Falha ao remover imagem do Storage: %s", url, exc_info=True)
 
 
 async def upload_image(file: UploadFile) -> str:

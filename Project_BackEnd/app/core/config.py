@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     debug: bool = False
 
     google_calendar_id: str
+    google_credentials_path: str = "credentials/service-account.json"
     calendar_timezone: str = "America/Sao_Paulo"
 
     business_hour_start: int = 8
@@ -28,6 +29,13 @@ class Settings(BaseSettings):
     supabase_url: str
     supabase_anon_key: str
     supabase_service_key: str
+
+    @computed_field
+    @property
+    def cors_origins(self) -> list[str]:
+        if self.app_env == "production":
+            return ["https://zanin-detailer.vercel.app"]
+        return ["*"]
 
     @computed_field
     @property

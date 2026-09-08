@@ -10,7 +10,7 @@ from googleapiclient.errors import HttpError
 from app.core.config import settings
 
 _SCOPES = ["https://www.googleapis.com/auth/calendar"]
-_CREDENTIALS_PATH = Path("credentials/zanin-detailer-4411ff4fff83.json")
+_CREDENTIALS_PATH = Path(settings.google_credentials_path)
 
 
 @lru_cache(maxsize=1)
@@ -19,7 +19,7 @@ def _get_service():
         raise FileNotFoundError(
             f"Arquivo de credenciais não encontrado em {_CREDENTIALS_PATH}. "
             "Faça o download do JSON da Service Account no Google Cloud Console "
-            "e salve em credentials/zanin-detailer-4411ff4fff83.json"
+            "e configure o caminho em GOOGLE_CREDENTIALS_PATH no .env."
         )
     creds = service_account.Credentials.from_service_account_file(
         str(_CREDENTIALS_PATH), scopes=_SCOPES

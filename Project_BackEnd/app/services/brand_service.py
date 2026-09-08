@@ -52,19 +52,26 @@ class BrandService:
                     detail=f"Já existe uma marca com o nome '{data.name}'.",
                 )
 
+        old_image_url = brand.image_url
         image_url = None
         if image:
-            if brand.image_url:
-                await delete_image(brand.image_url)
             image_url = await upload_image(image)
 
         brand = await self._repo.update(brand, data, image_url=image_url)
+
+        if image and old_image_url:
+            await delete_image(old_image_url)
+
         await brands_cache.invalidate("list:")
         return brand
 
     async def delete_brand(self, brand_id: int) -> None:
         brand = await self.get_or_404(brand_id)
-        if brand.image_url:
-            await delete_image(brand.image_url)
+        image_url = brand.image_url
+
         await self._repo.delete(brand)
+
+        if image_url:
+            await delete_image(image_url)
+
         await brands_cache.invalidate("list:")
