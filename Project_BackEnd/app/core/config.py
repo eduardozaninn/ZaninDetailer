@@ -21,6 +21,8 @@ class Settings(BaseSettings):
 
     google_calendar_id: str
     google_credentials_path: str = "credentials/service-account.json"
+    google_client_email: str | None = None
+    google_private_key: str | None = None
     calendar_timezone: str = "America/Sao_Paulo"
 
     business_hour_start: int = 8

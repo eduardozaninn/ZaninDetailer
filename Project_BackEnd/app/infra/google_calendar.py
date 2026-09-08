@@ -15,11 +15,21 @@ _CREDENTIALS_PATH = Path(settings.google_credentials_path)
 
 @lru_cache(maxsize=1)
 def _get_service():
+    if settings.google_client_email and settings.google_private_key:
+        info = {
+            "type": "service_account",
+            "client_email": settings.google_client_email,
+            "private_key": settings.google_private_key.replace("\\n", "\n"),
+            "token_uri": "https://oauth2.googleapis.com/token",
+        }
+        creds = service_account.Credentials.from_service_account_info(info, scopes=_SCOPES)
+        return build("calendar", "v3", credentials=creds)
+
     if not _CREDENTIALS_PATH.exists():
         raise FileNotFoundError(
             f"Arquivo de credenciais não encontrado em {_CREDENTIALS_PATH}. "
-            "Faça o download do JSON da Service Account no Google Cloud Console "
-            "e configure o caminho em GOOGLE_CREDENTIALS_PATH no .env."
+            "Configure GOOGLE_CLIENT_EMAIL + GOOGLE_PRIVATE_KEY, ou "
+            "GOOGLE_CREDENTIALS_PATH apontando para o JSON da Service Account."
         )
     creds = service_account.Credentials.from_service_account_file(
         str(_CREDENTIALS_PATH), scopes=_SCOPES
