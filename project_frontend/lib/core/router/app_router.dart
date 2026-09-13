@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:provider/provider.dart';
 import '../constants/app_constants.dart';
+import '../network/api_client.dart';
 import '../utils/jwt_utils.dart';
 import '../../di/injection_container.dart' as di;
 import '../../features/client_booking/data/models/service_model.dart';
@@ -84,8 +85,15 @@ class AppRouter {
           final storage = di.sl<FlutterSecureStorage>();
           final token = await storage.read(key: StoreKeys.accessToken);
 
-          if (token == null || token.isEmpty || JwtUtils.isExpired(token)) {
+          if (token == null || token.isEmpty) {
             return services;
+          }
+
+          if (JwtUtils.isExpired(token)) {
+            // Access token expirou, mas o refresh_token costuma durar bem
+            // mais — tenta renovar a sessão em silêncio antes de deslogar.
+            final refreshed = await di.sl<ApiClient>().refreshToken();
+            if (!refreshed) return services;
           }
           return null;
         },

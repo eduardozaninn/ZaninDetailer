@@ -8,8 +8,6 @@ class ApiClient {
   late final Dio dio;
   final FlutterSecureStorage _storage;
 
-  // Garante que, se várias requisições levarem 401 ao mesmo tempo, só uma
-  // dispara o refresh de verdade — as demais esperam o mesmo resultado.
   Completer<bool>? _refreshCompleter;
 
   static const String baseUrl = 'https://zanindetailer-production.up.railway.app/api/v1/';
@@ -64,6 +62,8 @@ class ApiClient {
       ),
     );
   }
+
+  Future<bool> refreshToken() => _refreshToken();
 
   Future<bool> _refreshToken() async {
     if (_refreshCompleter != null) {
