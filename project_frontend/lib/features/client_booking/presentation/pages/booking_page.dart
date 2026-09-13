@@ -205,6 +205,17 @@ class _BookingPageState extends State<BookingPage> {
                             Text(
                                 'Duração: ~${service.duration} • ${StringUtils.formatCurrency(service.price)}',
                                 style: textTheme.bodyMedium),
+                            if (service.description != null &&
+                                service.description!.isNotEmpty) ...[
+                              const SizedBox(height: 16),
+                              Text(
+                                service.description!,
+                                style: textTheme.bodyMedium?.copyWith(
+                                  color: Colors.grey[400],
+                                  height: 1.5,
+                                ),
+                              ),
+                            ],
                             const SizedBox(height: 40),
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,

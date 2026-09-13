@@ -1,10 +1,14 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:zanin_detailer/core/utils/string_utils.dart';
+import '../../../../core/constants/app_constants.dart';
+import '../../../../core/network/api_client.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../core/utils/jwt_utils.dart';
 import '../providers/service_selection_provider.dart';
 import '../../../../features/client_booking/data/models/service_model.dart';
 import '../../../../di/injection_container.dart' as di;
@@ -38,6 +42,24 @@ class _ServiceSelectionContentState extends State<_ServiceSelectionContent> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ServiceSelectionProvider>().fetchApiData();
     });
+  }
+
+  Future<void> _onAdminAccessTap(BuildContext context) async {
+    final storage = di.sl<FlutterSecureStorage>();
+    final token = await storage.read(key: StoreKeys.accessToken);
+
+    final hasValidSession = token != null &&
+        token.isNotEmpty &&
+        (!JwtUtils.isExpired(token) || await di.sl<ApiClient>().refreshToken());
+
+    if (!context.mounted) return;
+
+    if (hasValidSession) {
+      context.go(AppRouter.admin);
+      return;
+    }
+
+    _showLoginModal(context);
   }
 
   void _showLoginModal(BuildContext context) {
@@ -123,7 +145,7 @@ class _ServiceSelectionContentState extends State<_ServiceSelectionContent> {
                                     icon: const Icon(Icons.manage_accounts,
                                         color: AppTheme.textSecondary,
                                         size: 28),
-                                    onPressed: () => _showLoginModal(context),
+                                    onPressed: () => _onAdminAccessTap(context),
                                     tooltip: 'Acesso Restrito',
                                   ),
                                 ],

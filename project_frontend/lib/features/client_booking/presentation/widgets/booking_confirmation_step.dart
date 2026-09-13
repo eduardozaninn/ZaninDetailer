@@ -204,10 +204,10 @@ class BookingConfirmationStep extends StatelessWidget {
                             _showSuccessModal(
                                 context, selectedDate, selectedTime);
                           } else if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                  content: Text(provider.errorMessage ??
-                                      'Não foi possível confirmar o agendamento.')),
+                            _showErrorSnackBar(
+                              context,
+                              provider.errorMessage ??
+                                  'Não foi possível confirmar o agendamento.',
                             );
                           }
                         },
@@ -247,15 +247,36 @@ class BookingConfirmationStep extends StatelessWidget {
     );
   }
 
+  void _showErrorSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: AppTheme.surface,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side:
+                BorderSide(color: AppTheme.primaryRed.withValues(alpha: 0.4))),
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline,
+                color: AppTheme.primaryRed, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(message, style: const TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _openWhatsApp(BuildContext context, String message) async {
     final uri = Uri.parse(
       'https://wa.me/${AppConstants.whatsappNumber}?text=${Uri.encodeComponent(message)}',
     );
     final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!opened && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Não foi possível abrir o WhatsApp.')),
-      );
+      _showErrorSnackBar(context, 'Não foi possível abrir o WhatsApp.');
     }
   }
 

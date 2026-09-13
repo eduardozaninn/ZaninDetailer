@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from slowapi import _rate_limit_exceeded_handler
@@ -11,6 +12,7 @@ from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.limiter import limiter
 from app.core.logging_config import setup_logging
+from app.core.validation_errors import validation_exception_handler
 from app.infra.database import engine
 
 
@@ -31,6 +33,7 @@ def create_app() -> FastAPI:
 
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    app.add_exception_handler(RequestValidationError, validation_exception_handler)
     app.add_middleware(SlowAPIMiddleware)
 
     app.add_middleware(GZipMiddleware, minimum_size=1000)

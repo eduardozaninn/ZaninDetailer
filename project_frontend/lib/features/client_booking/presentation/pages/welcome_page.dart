@@ -225,6 +225,24 @@ class _WelcomePageState extends State<WelcomePage>
               ),
             ),
           ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 8,
+            child: SafeArea(
+              top: false,
+              child: Center(
+                child: Text(
+                  'Desenvolvido por Eduardo Zanin & Geovana Paula',
+                  textAlign: TextAlign.center,
+                  style: textTheme.bodySmall?.copyWith(
+                    color: Colors.white.withValues(alpha: 0.35),
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
