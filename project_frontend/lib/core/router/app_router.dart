@@ -82,20 +82,22 @@ class AppRouter {
       GoRoute(
         path: admin,
         redirect: (context, state) async {
-          final storage = di.sl<FlutterSecureStorage>();
-          final token = await storage.read(key: StoreKeys.accessToken);
+          try {
+            final storage = di.sl<FlutterSecureStorage>();
+            final token = await storage.read(key: StoreKeys.accessToken);
 
-          if (token == null || token.isEmpty) {
+            if (token == null || token.isEmpty) {
+              return services;
+            }
+
+            if (JwtUtils.isExpired(token)) {
+              final refreshed = await di.sl<ApiClient>().refreshToken();
+              if (!refreshed) return services;
+            }
+            return null;
+          } catch (_) {
             return services;
           }
-
-          if (JwtUtils.isExpired(token)) {
-            // Access token expirou, mas o refresh_token costuma durar bem
-            // mais — tenta renovar a sessão em silêncio antes de deslogar.
-            final refreshed = await di.sl<ApiClient>().refreshToken();
-            if (!refreshed) return services;
-          }
-          return null;
         },
         builder: (context, state) => MultiProvider(
           providers: [

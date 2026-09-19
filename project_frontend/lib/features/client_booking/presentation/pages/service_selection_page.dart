@@ -45,12 +45,17 @@ class _ServiceSelectionContentState extends State<_ServiceSelectionContent> {
   }
 
   Future<void> _onAdminAccessTap(BuildContext context) async {
-    final storage = di.sl<FlutterSecureStorage>();
-    final token = await storage.read(key: StoreKeys.accessToken);
-
-    final hasValidSession = token != null &&
-        token.isNotEmpty &&
-        (!JwtUtils.isExpired(token) || await di.sl<ApiClient>().refreshToken());
+    var hasValidSession = false;
+    try {
+      final storage = di.sl<FlutterSecureStorage>();
+      final token = await storage.read(key: StoreKeys.accessToken);
+      hasValidSession = token != null &&
+          token.isNotEmpty &&
+          (!JwtUtils.isExpired(token) ||
+              await di.sl<ApiClient>().refreshToken());
+    } catch (_) {
+      hasValidSession = false;
+    }
 
     if (!context.mounted) return;
 
