@@ -1,11 +1,11 @@
 {
-    "name": "project_frontend",
-    "short_name": "project_frontend",
+    "name": "Zanin Detailer",
+    "short_name": "Zanin Detailer",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#121212",
+    "theme_color": "#A61D33",
+    "description": "Agende seu detalhamento automotivo com a Zanin Detailer.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
