@@ -94,12 +94,17 @@ class _ServiceSelectionContentState extends State<_ServiceSelectionContent> {
   }
 
   Widget _buildSectionTitle(String title, TextTheme textTheme) {
-    return Text(
-      title,
-      style: textTheme.titleLarge?.copyWith(
-        fontSize: 22,
-        fontWeight: FontWeight.bold,
-        color: Colors.white,
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerLeft,
+      child: Text(
+        title,
+        maxLines: 1,
+        style: textTheme.titleLarge?.copyWith(
+          fontSize: 22,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
       ),
     );
   }
@@ -175,46 +180,47 @@ class _ServiceSelectionContentState extends State<_ServiceSelectionContent> {
                       ),
                       SliverPadding(
                         padding: const EdgeInsets.only(
-                            top: 64, left: 20, right: 20, bottom: 24),
+                            top: 48, left: 20, right: 20, bottom: 24),
                         sliver: SliverToBoxAdapter(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _buildSectionTitle(
                                   'Produtos de Alta Performance', textTheme),
-                              const SizedBox(height: 24),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.start,
-                                children: provider.brandLogos
-                                    .map((logoUrl) => Padding(
-                                          padding:
-                                              const EdgeInsets.only(right: 32),
-                                          child: ColorFiltered(
-                                            colorFilter: const ColorFilter.mode(
-                                                Colors.grey, BlendMode.srcATop),
-                                            child: Image.network(
-                                              logoUrl,
-                                              height: 60,
-                                              fit: BoxFit.contain,
-                                              errorBuilder: (c, e, s) =>
-                                                  Container(
-                                                width: 100,
-                                                height: 60,
-                                                alignment: Alignment.center,
-                                                decoration: BoxDecoration(
-                                                    color: Colors.white12,
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            12)),
-                                                child: const Icon(
-                                                    Icons.broken_image,
-                                                    color: Colors.grey,
-                                                    size: 35),
-                                              ),
-                                            ),
-                                          ),
-                                        ))
-                                    .toList(),
+                              const SizedBox(height: 20),
+                              SizedBox(
+                                height: 44,
+                                child: ListView.separated(
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: provider.brandLogos.length,
+                                  separatorBuilder: (context, index) =>
+                                      const SizedBox(width: 28),
+                                  itemBuilder: (context, index) {
+                                    final logoUrl = provider.brandLogos[index];
+                                    return ColorFiltered(
+                                      colorFilter: const ColorFilter.mode(
+                                          Colors.grey, BlendMode.srcATop),
+                                      child: Image.network(
+                                        logoUrl,
+                                        height: 44,
+                                        fit: BoxFit.contain,
+                                        errorBuilder: (c, e, s) => Container(
+                                          width: 90,
+                                          height: 44,
+                                          alignment: Alignment.center,
+                                          decoration: BoxDecoration(
+                                              color: Colors.white12,
+                                              borderRadius:
+                                                  BorderRadius.circular(12)),
+                                          child: const Icon(
+                                              Icons.broken_image,
+                                              color: Colors.grey,
+                                              size: 35),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
                               ),
                             ],
                           ),
@@ -222,7 +228,7 @@ class _ServiceSelectionContentState extends State<_ServiceSelectionContent> {
                       ),
                       SliverPadding(
                         padding:
-                            const EdgeInsets.only(top: 64, left: 20, right: 20),
+                            const EdgeInsets.only(top: 40, left: 20, right: 20),
                         sliver: SliverToBoxAdapter(
                           child: _buildSectionTitle(
                               'Últimos Trabalhos', textTheme),
