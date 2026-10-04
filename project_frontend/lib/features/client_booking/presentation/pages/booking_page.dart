@@ -7,6 +7,7 @@ import '../../../../core/router/app_router.dart';
 import '../providers/booking_provider.dart';
 import '../../../../features/client_booking/data/models/service_model.dart';
 import '../widgets/booking_confirmation_step.dart';
+import '../widgets/whatsapp_help_fab.dart';
 import '../../../../core/utils/string_utils.dart';
 
 class BookingPage extends StatefulWidget {
@@ -296,6 +297,14 @@ class _BookingPageState extends State<BookingPage> {
                       },
                     ),
                   ),
+                ),
+              ),
+              const Positioned(
+                right: 16,
+                bottom: 100,
+                child: SafeArea(
+                  top: false,
+                  child: WhatsAppHelpFab(),
                 ),
               ),
             ],

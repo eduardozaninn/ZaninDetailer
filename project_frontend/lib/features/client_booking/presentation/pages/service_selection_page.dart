@@ -14,6 +14,7 @@ import '../../../../features/client_booking/data/models/service_model.dart';
 import '../../../../di/injection_container.dart' as di;
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../admin_panel/presentation/widgets/admin_custom_input.dart';
+import '../widgets/whatsapp_help_fab.dart';
 
 class ServiceSelectionPage extends StatelessWidget {
   const ServiceSelectionPage({super.key});
@@ -250,6 +251,14 @@ class _ServiceSelectionContentState extends State<_ServiceSelectionContent> {
                       ),
                     ],
                   ),
+          ),
+          const Positioned(
+            right: 16,
+            bottom: 16,
+            child: SafeArea(
+              top: false,
+              child: WhatsAppHelpFab(),
+            ),
           ),
         ],
       ),
