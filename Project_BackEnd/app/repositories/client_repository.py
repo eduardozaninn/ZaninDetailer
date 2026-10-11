@@ -22,6 +22,7 @@ class ClientRepository:
             phone=data.phone,
             license_plate=data.license_plate,
             vehicle_brand_model=data.vehicle_brand_model,
+            vehicle_size=data.vehicle_size,
         )
         self._session.add(client)
         await self._session.flush()
@@ -37,6 +38,8 @@ class ClientRepository:
             client.license_plate = data.license_plate
         if data.vehicle_brand_model is not None:
             client.vehicle_brand_model = data.vehicle_brand_model
+        if data.vehicle_size is not None:
+            client.vehicle_size = data.vehicle_size
         await self._session.flush()
         await self._session.refresh(client)
         return client
@@ -48,6 +51,7 @@ class ClientRepository:
             client.phone = data.phone
             if data.vehicle_brand_model:
                 client.vehicle_brand_model = data.vehicle_brand_model
+            client.vehicle_size = data.vehicle_size
             await self._session.flush()
             return client
 

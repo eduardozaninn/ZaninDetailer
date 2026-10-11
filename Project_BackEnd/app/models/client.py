@@ -12,6 +12,9 @@ class Client(Base):
     phone: Mapped[str] = mapped_column(String(20), nullable=False)
     license_plate: Mapped[str] = mapped_column(String(10), nullable=False, unique=True)
     vehicle_brand_model: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    vehicle_size: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="hatch_sedan", server_default="hatch_sedan"
+    )
 
     appointments: Mapped[list["Appointment"]] = relationship(
         back_populates="client"

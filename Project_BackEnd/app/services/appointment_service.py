@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.cache import slots_cache
 from app.core.config import settings
+from app.core.pricing import VEHICLE_SIZE_SURCHARGE
 from app.infra.google_calendar import (
     create_calendar_event,
     delete_calendar_event,
@@ -67,11 +68,6 @@ class AppointmentService:
         if day_end <= datetime.now(tz=TZ):
             return [], service.duration_minutes
 
-        # Sequencial (não asyncio.gather): a AsyncSession do SQLAlchemy não é
-        # segura para uso concorrente por duas corrotinas ao mesmo tempo — uma
-        # falha na chamada ao Google Calendar corrompia a conexão que a
-        # consulta ao banco ainda estava usando, causando 500 em cascata em
-        # requisições seguintes.
         try:
             busy_google = await get_busy_slots(day_start, day_end)
         except Exception as exc:
@@ -158,12 +154,15 @@ class AppointmentService:
 
         client = await self._client_repo.get_or_create(data.client)
 
+        surcharge = VEHICLE_SIZE_SURCHARGE.get(client.vehicle_size, 0)
+
         appointment = await self._repo.create(
             client=client,
             service_id=service.id,
             scheduled_start=scheduled_start,
             scheduled_end=scheduled_end,
-            total_price=service.price,
+            total_price=service.price + surcharge,
+            vehicle_surcharge=surcharge,
         )
 
         await self._repo.add_history(
@@ -182,7 +181,7 @@ class AppointmentService:
                     f"Telefone: {client.phone}\n"
                     f"Placa: {client.license_plate}\n"
                     f"Veículo: {client.vehicle_brand_model or 'Não informado'}\n"
-                    f"Valor: R$ {service.price}"
+                    f"Valor: R$ {appointment.total_price}"
                 ),
                 start=scheduled_start,
                 end=scheduled_end,

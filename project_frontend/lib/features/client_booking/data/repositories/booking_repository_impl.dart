@@ -85,6 +85,7 @@ class BookingRepositoryImpl implements IBookingRepository {
     required String whatsapp,
     required String licensePlate,
     required String vehicleModel,
+    required String vehicleSize,
   }) async {
     try {
       final requestData = {
@@ -94,7 +95,8 @@ class BookingRepositoryImpl implements IBookingRepository {
           "full_name": clientName,
           "phone": whatsapp,
           "license_plate": licensePlate,
-          "vehicle_brand_model": vehicleModel
+          "vehicle_brand_model": vehicleModel,
+          "vehicle_size": vehicleSize,
         }
       };
 

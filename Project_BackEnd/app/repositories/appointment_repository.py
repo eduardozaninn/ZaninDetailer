@@ -55,6 +55,7 @@ class AppointmentRepository:
         scheduled_start: datetime,
         scheduled_end: datetime,
         total_price: Decimal,
+        vehicle_surcharge: Decimal = Decimal("0"),
     ) -> Appointment:
         appointment = Appointment(
             client=client,
@@ -62,6 +63,7 @@ class AppointmentRepository:
             scheduled_start=scheduled_start,
             scheduled_end=scheduled_end,
             total_price=total_price,
+            vehicle_surcharge=vehicle_surcharge,
             status=AppointmentStatus.PENDING,
         )
         self._session.add(appointment)

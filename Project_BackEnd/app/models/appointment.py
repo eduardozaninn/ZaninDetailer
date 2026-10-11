@@ -41,6 +41,9 @@ class Appointment(Base):
         index=True,
     )
     total_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    vehicle_surcharge: Mapped[Decimal] = mapped_column(
+        Numeric(10, 2), nullable=False, default=0, server_default="0"
+    )
 
     google_event_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
 

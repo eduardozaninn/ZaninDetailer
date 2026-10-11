@@ -4,6 +4,8 @@ from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
+from app.core.pricing import VALID_VEHICLE_SIZES
+
 BR_TZ = ZoneInfo("America/Sao_Paulo")
 
 class ClientCreate(BaseModel):
@@ -11,6 +13,7 @@ class ClientCreate(BaseModel):
     phone: str = Field(min_length=10, max_length=20, examples=["11999999999"])
     license_plate: str = Field(min_length=7, max_length=10, examples=["ABC1234"])
     vehicle_brand_model: str | None = Field(default=None, max_length=100, examples=["Chevrolet Onix"])
+    vehicle_size: str = Field(default="hatch_sedan", examples=["hatch_sedan"])
 
     @field_validator("license_plate")
     @classmethod
@@ -25,12 +28,20 @@ class ClientCreate(BaseModel):
             raise ValueError("Telefone deve ter pelo menos 10 dígitos com DDD.")
         return digits
 
+    @field_validator("vehicle_size")
+    @classmethod
+    def validate_vehicle_size(cls, v: str) -> str:
+        if v not in VALID_VEHICLE_SIZES:
+            raise ValueError(f"Porte de veículo inválido. Use um de: {', '.join(VALID_VEHICLE_SIZES)}.")
+        return v
+
 
 class ClientUpdate(BaseModel):
     full_name: str | None = Field(default=None, min_length=3, max_length=150)
     phone: str | None = Field(default=None, min_length=10, max_length=20)
     license_plate: str | None = Field(default=None, min_length=7, max_length=10)
     vehicle_brand_model: str | None = Field(default=None, max_length=100)
+    vehicle_size: str | None = Field(default=None)
 
     @field_validator("license_plate")
     @classmethod
@@ -49,6 +60,13 @@ class ClientUpdate(BaseModel):
             return digits
         return v
 
+    @field_validator("vehicle_size")
+    @classmethod
+    def validate_vehicle_size(cls, v: str | None) -> str | None:
+        if v is not None and v not in VALID_VEHICLE_SIZES:
+            raise ValueError(f"Porte de veículo inválido. Use um de: {', '.join(VALID_VEHICLE_SIZES)}.")
+        return v
+
 
 class ClientResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -58,6 +76,7 @@ class ClientResponse(BaseModel):
     phone: str
     license_plate: str
     vehicle_brand_model: str | None
+    vehicle_size: str
 
 class AvailableSlot(BaseModel):
     start: datetime
@@ -112,6 +131,7 @@ class AppointmentResponse(BaseModel):
     scheduled_end: datetime
     status: str
     total_price: Decimal
+    vehicle_surcharge: Decimal
     client: ClientResponse
     history: list[AppointmentHistoryResponse] = []
     created_at: datetime

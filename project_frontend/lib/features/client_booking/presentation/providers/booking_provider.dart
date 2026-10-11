@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../../data/models/service_model.dart';
 import '../../domain/repositories/i_booking_repository.dart';
 import '../../../../core/utils/date_time_utils.dart';
+import '../../../../core/constants/app_constants.dart';
 
 class BookingProvider extends ChangeNotifier {
   final IBookingRepository _repository;
@@ -24,6 +25,14 @@ class BookingProvider extends ChangeNotifier {
 
   List<String> _availableHours = [];
   List<String> get availableHours => _availableHours;
+
+  String _selectedVehicleSize = VehicleSizes.options.first.value;
+  String get selectedVehicleSize => _selectedVehicleSize;
+
+  void selectVehicleSize(String value) {
+    _selectedVehicleSize = value;
+    notifyListeners();
+  }
 
   final nameController = TextEditingController();
   final vehicleController = TextEditingController();
@@ -112,6 +121,7 @@ class BookingProvider extends ChangeNotifier {
         vehicleModel: vehicleController.text.isEmpty
             ? "Não identificado"
             : vehicleController.text.trim(),
+        vehicleSize: _selectedVehicleSize,
       );
 
       _isLoading = false;

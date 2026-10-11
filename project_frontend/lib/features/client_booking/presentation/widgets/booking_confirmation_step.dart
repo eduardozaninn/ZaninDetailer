@@ -92,9 +92,13 @@ class BookingConfirmationStep extends StatelessWidget {
                       children: [
                         const Text("🚗", style: TextStyle(fontSize: 16)),
                         const SizedBox(width: 12),
-                        Text(service.title,
-                            style: textTheme.titleMedium
-                                ?.copyWith(color: Colors.grey[300])),
+                        Expanded(
+                          child: Text(service.title,
+                              style: textTheme.titleMedium
+                                  ?.copyWith(color: Colors.grey[300]),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -112,13 +116,27 @@ class BookingConfirmationStep extends StatelessWidget {
                       children: [
                         const Text("💵", style: TextStyle(fontSize: 16)),
                         const SizedBox(width: 12),
-                        Text(
-                          "${StringUtils.formatCurrency(service.price)}  •  Duração: ~${service.duration}",
-                          style: textTheme.titleMedium
-                              ?.copyWith(color: Colors.grey[300]),
+                        Expanded(
+                          child: Text(
+                            "${StringUtils.formatCurrency(service.price + _currentSurcharge(provider))}  •  Duração: ~${service.duration}",
+                            style: textTheme.titleMedium
+                                ?.copyWith(color: Colors.grey[300]),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ],
                     ),
+                    if (_currentSurcharge(provider) > 0) ...[
+                      const SizedBox(height: 4),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 28),
+                        child: Text(
+                          "Inclui adicional de porte: ${StringUtils.formatCurrency(_currentSurcharge(provider))}",
+                          style: textTheme.bodySmall
+                              ?.copyWith(color: Colors.grey[500]),
+                        ),
+                      ),
+                    ],
                     if (service.description != null &&
                         service.description!.isNotEmpty) ...[
                       const SizedBox(height: 16),
@@ -170,6 +188,32 @@ class BookingConfirmationStep extends StatelessWidget {
               const SizedBox(height: 12),
               _buildInputField("Marca e Modelo (Ex: Chevrolet Onix)",
                   provider.vehicleController),
+              const SizedBox(height: 24),
+              Text("Porte do Veículo",
+                  style: textTheme.titleLarge
+                      ?.copyWith(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Text(
+                "Selecione o que mais se aproxima do seu carro",
+                style: TextStyle(
+                    color: Colors.grey[500],
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic),
+              ),
+              const SizedBox(height: 12),
+              _VehicleSizeTrack(
+                selectedValue: provider.selectedVehicleSize,
+                onSelected: provider.selectVehicleSize,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                "Em caso de sujeira pesada (barro, lama incrustada), pode haver "
+                "acréscimo avaliado no local.",
+                style: TextStyle(
+                    color: Colors.grey[500],
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic),
+              ),
               const SizedBox(height: 40),
               Container(
                 width: double.infinity,
@@ -227,6 +271,13 @@ class BookingConfirmationStep extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  double _currentSurcharge(BookingProvider provider) {
+    return VehicleSizes.options
+        .firstWhere((o) => o.value == provider.selectedVehicleSize,
+            orElse: () => VehicleSizes.options.first)
+        .surcharge;
   }
 
   Widget _buildInputField(String hint, TextEditingController controller,
@@ -404,6 +455,187 @@ class BookingConfirmationStep extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _VehicleSizeTrack extends StatelessWidget {
+  final String selectedValue;
+  final ValueChanged<String> onSelected;
+
+  const _VehicleSizeTrack({
+    required this.selectedValue,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const options = VehicleSizes.options;
+    const spacing = 10.0;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final available = constraints.maxWidth - spacing * (options.length - 1);
+        final expandedWidth = available * 0.50;
+        final collapsedWidth = (available - expandedWidth) / (options.length - 1);
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (int i = 0; i < options.length; i++) ...[
+              if (i > 0) const SizedBox(width: spacing),
+              _VehicleSizeCard(
+                option: options[i],
+                isSelected: options[i].value == selectedValue,
+                width: options[i].value == selectedValue
+                    ? expandedWidth
+                    : collapsedWidth,
+                onTap: () => onSelected(options[i].value),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _VehicleSizeCard extends StatelessWidget {
+  final VehicleSizeOption option;
+  final bool isSelected;
+  final double width;
+  final VoidCallback onTap;
+
+  const _VehicleSizeCard({
+    required this.option,
+    required this.isSelected,
+    required this.width,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 340),
+        curve: Curves.easeOutCubic,
+        width: width,
+        height: 128,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: isSelected
+              ? LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppTheme.primaryRed,
+                    AppTheme.primaryRed.withValues(alpha: 0.75),
+                  ],
+                )
+              : null,
+          color: isSelected ? null : const Color(0xFF121212),
+          border: Border.all(
+            color: isSelected
+                ? AppTheme.primaryRed
+                : Colors.white.withValues(alpha: 0.08),
+            width: 1.5,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: AppTheme.primaryRed.withValues(alpha: 0.45),
+                    blurRadius: 20,
+                    spreadRadius: 1,
+                    offset: const Offset(0, 6),
+                  ),
+                ]
+              : [],
+        ),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned.fill(
+              child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: isSelected
+                  ? CrossAxisAlignment.start
+                  : CrossAxisAlignment.center,
+              children: [
+                AnimatedScale(
+                  duration: const Duration(milliseconds: 340),
+                  curve: Curves.easeOutBack,
+                  scale: isSelected ? 1.15 : 0.85,
+                  child: Opacity(
+                    opacity: isSelected ? 1.0 : 0.6,
+                    child: Text(option.emoji,
+                        style: const TextStyle(fontSize: 30)),
+                  ),
+                ),
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 260),
+                  curve: Curves.easeOutCubic,
+                  child: isSelected
+                      ? Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                option.shortLabel,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                option.surcharge > 0
+                                    ? "+${StringUtils.formatCurrency(option.surcharge)}"
+                                    : "Sem adicional",
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.85),
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : const SizedBox.shrink(),
+                ),
+              ],
+              ),
+            ),
+            Positioned(
+              top: -6,
+              right: -6,
+              child: AnimatedScale(
+                duration: const Duration(milliseconds: 260),
+                curve: Curves.easeOutBack,
+                scale: isSelected ? 1.0 : 0.0,
+                child: Container(
+                  width: 22,
+                  height: 22,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.check,
+                      color: AppTheme.primaryRed, size: 15),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

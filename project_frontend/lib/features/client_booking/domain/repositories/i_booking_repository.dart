@@ -18,6 +18,7 @@ abstract class IBookingRepository {
     required String whatsapp,
     required String licensePlate,
     required String vehicleModel,
+    required String vehicleSize,
   });
   Future<Either<Failure, List<String>>> getBrands();
 }
